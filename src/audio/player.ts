@@ -89,6 +89,7 @@ export interface UnifiedPlayOptions {
   muted: Set<TrackId>
   solo: TrackId | null
   timbre: Timbre
+  loop?: boolean
   onEnd: () => void
 }
 
@@ -103,6 +104,7 @@ const unifiedDisposers: Array<() => void> = []
 export function stopUnified(): void {
   // Silencia imediatamente qualquer áudio já agendado no Web Audio timeline
   try { Tone.getDestination().mute = true } catch { /* contexto não iniciado */ }
+  Tone.Transport.loop = false
   Tone.Transport.stop()
   Tone.Transport.cancel()
   unifiedDisposers.forEach(fn => fn())
@@ -112,7 +114,7 @@ export function stopUnified(): void {
 // Síncrono após initAudio() — usa Tone.Transport para scheduling atômico
 export function playUnified({
   kickEvents, pianoEvents, bassEvents,
-  bpm, tpq, muted, solo, timbre, onEnd,
+  bpm, tpq, muted, solo, timbre, loop = false, onEnd,
 }: UnifiedPlayOptions): void {
   stopUnified()
   Tone.getDestination().mute = false  // desmuta para o novo playback
@@ -176,9 +178,23 @@ export function playUnified({
 
   const lastTick = [...kickEvents, ...pianoEvents, ...bassEvents]
     .reduce((max, e) => Math.max(max, e.tick + e.duration), 0)
+  const loopEndSecs = lastTick * secsPerTick
 
-  Tone.Transport.schedule(() => onEnd(), lastTick * secsPerTick + 0.15)
+  if (loop) {
+    // Loop nativo do Transport — sem gap, sem React no caminho
+    Tone.Transport.loop = true
+    Tone.Transport.loopStart = 0
+    Tone.Transport.loopEnd = loopEndSecs
+  } else {
+    Tone.Transport.loop = false
+    Tone.Transport.schedule(() => onEnd(), loopEndSecs + 0.15)
+  }
+
   Tone.Transport.start()
+}
+
+export function getLoopDuration(): number | null {
+  return Tone.Transport.loop ? (Tone.Transport.loopEnd as number) : null
 }
 
 export function getTransportSeconds(): number {

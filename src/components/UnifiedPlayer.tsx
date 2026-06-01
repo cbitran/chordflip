@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TrackRow } from './TrackRow'
 import { genKickEvents, kickStepsForGrid } from '../core/kick-pattern'
-import { playUnified, stopUnified, initAudio, getTransportSeconds } from '../audio/player'
+import { playUnified, stopUnified, initAudio, getTransportSeconds, getLoopDuration } from '../audio/player'
 import { reVoice } from '../core/reharmonizer'
 import { NOTE_NAMES } from '../core/parser'
 import type { MidiEvent, ParsedChord, GenreDefinition, Timbre, TrackId, Extension } from '../types'
@@ -48,6 +48,7 @@ function eventsToSteps(events: MidiEvent[], bar: number): number[] {
 export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genre, genreName, chords, ext }: Props) {
   const { t } = useTranslation()
   const [playing, setPlaying] = useState(false)
+  const [loop, setLoop] = useState(false)
   const [progress, setProgress] = useState(0)
   const [expanded, setExpanded] = useState(false)
   const [muted, setMuted] = useState<Set<TrackId>>(new Set())
@@ -68,6 +69,8 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genre, genreName, 
   const bassSteps = useMemo(() => eventsToSteps(bassEvents, 0), [bassEvents])
 
   const playingRef = useRef(false)
+  const loopRef = useRef(loop)
+  loopRef.current = loop
   const totalSecsRef = useRef(0)
 
   // Detecta mudança de eventos (extensão, gênero, acordes) — para o player e sinaliza atualização
@@ -90,12 +93,19 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genre, genreName, 
   stateRef.current = { muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm }
 
   // rAF para playhead — usa Tone.Transport.seconds (fonte de verdade atômica)
+  // Em modo loop, Transport.seconds reinicia em loopStart, então o progresso
+  // já é natural — sem precisar de módulo manual.
   useEffect(() => {
     if (!playing) { setProgress(0); return }
     let id: number
     const tick = () => {
-      if (totalSecsRef.current > 0) {
-        setProgress(Math.min(getTransportSeconds() / totalSecsRef.current, 1))
+      const total = totalSecsRef.current
+      if (total > 0) {
+        const loopDur = getLoopDuration()
+        const elapsed = getTransportSeconds()
+        // Se loopando, Transport.seconds reinicia em 0 automaticamente
+        const pos = loopDur !== null ? elapsed % loopDur : elapsed
+        setProgress(Math.min(pos / total, 1))
       }
       id = requestAnimationFrame(tick)
     }
@@ -147,6 +157,7 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genre, genreName, 
       muted: s.muted,
       solo: s.solo,
       timbre: s.timbre,
+      loop: loopRef.current,
       onEnd: () => {
         playingRef.current = false
         setPlaying(false)
@@ -181,6 +192,20 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genre, genreName, 
             Progressão atualizada
           </span>
         )}
+
+        {/* Loop toggle */}
+        <button
+          onClick={() => setLoop(v => !v)}
+          className="font-mono text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all"
+          style={{
+            background: loop ? 'rgba(138,180,240,0.15)' : 'var(--color-border)',
+            color: loop ? '#8ab4f0' : 'var(--color-muted)',
+            border: loop ? '1px solid #8ab4f0' : '1px solid transparent',
+          }}
+          title="Loop"
+        >
+          ⟳ Loop
+        </button>
 
         <span className="font-mono text-xs" style={{ color: 'var(--color-muted)' }}>
           {bpm} BPM · {numBars} {numBars === 1 ? 'compasso' : 'compassos'}
