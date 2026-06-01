@@ -6,47 +6,49 @@ export const config = { runtime: 'edge' }
 
 
 const LANG_INSTRUCTION: Record<string, string> = {
-  en: 'Respond entirely in English.',
-  es: 'Responde completamente en español.',
-  'pt-BR': 'Responda completamente em português do Brasil.',
+  en: 'All text values must be in English.',
+  es: 'Todos los valores de texto deben estar en español.',
+  'pt-BR': 'Todos os valores de texto devem estar em português do Brasil.',
 }
 
 async function analyzeWithGroq(apiKey: string, artist: string, title: string, targetStyle: string, targetBpm: number, lang: string) {
-  const langKey = LANG_INSTRUCTION[lang] ?? LANG_INSTRUCTION[lang.split('-')[0]] ?? LANG_INSTRUCTION['pt-BR']
+  const langInstruction = LANG_INSTRUCTION[lang] ?? LANG_INSTRUCTION[lang.split('-')[0]] ?? LANG_INSTRUCTION['pt-BR']
 
-  const prompt = `You are a music theory and dance music production expert. ${langKey}
+  const prompt = `You are a music theory and dance music production expert.
 
 Analyze the song "${title}" by ${artist}.
+
+IMPORTANT: Keep ALL JSON keys exactly as shown below (in English). Only translate the string values. ${langInstruction}
 
 Respond ONLY with valid JSON, no markdown, no extra text:
 {
   "key": "F",
-  "mode": "maior",
+  "mode": "major",
   "bpm_original": 69,
   "progression": "Fmaj7 – Am7 – Bbmaj7 – C7",
   "progression_degrees": "I – iii – IV – V",
-  "character": "Soul, R&B anos 80, emocional, quente",
-  "borrowed_chords": ["Eb (bVII)", "Fm (i menor)"],
+  "character": "Soul, 80s R&B, emotional, warm",
+  "borrowed_chords": ["Eb (bVII)", "Fm (i minor)"],
   "remix_guide": {
     "style": "${targetStyle}",
     "bpm": ${targetBpm},
     "structure": [
-      { "time": "0:00", "section": "Intro", "description": "Piano sutil + sub bass, sem kick" },
-      { "time": "0:32", "section": "Build Up", "description": "Hi-hat cresce, filtro abrindo" },
-      { "time": "1:20", "section": "Drop 1", "description": "Kick full, piano stab nos contratempos" },
-      { "time": "2:30", "section": "Break", "description": "Remove tudo, só pad atmosférico" },
-      { "time": "3:00", "section": "Drop 2", "description": "Adiciona lead, mais denso" },
-      { "time": "4:30", "section": "Outro", "description": "Dissolve gradual" }
+      { "time": "0:00", "section": "Intro", "description": "Subtle piano + sub bass, no kick" },
+      { "time": "0:32", "section": "Build Up", "description": "Hi-hat grows, filter opening" },
+      { "time": "1:20", "section": "Drop 1", "description": "Full kick, piano stab on off-beats" },
+      { "time": "2:30", "section": "Break", "description": "Strip everything, only atmospheric pad" },
+      { "time": "3:00", "section": "Drop 2", "description": "Add lead, denser" },
+      { "time": "4:30", "section": "Outro", "description": "Gradual dissolve" }
     ],
     "instruments": [
-      { "role": "Piano", "suggestion": "Rhodes com sidechain no kick — stab curto nos offbeats" },
-      { "role": "Bass", "suggestion": "Operator sine, sub 60Hz — groove nos contratempos" },
-      { "role": "Pad", "suggestion": "Wavetable — longo, aparece no break" },
-      { "role": "Lead", "suggestion": "Pluck/stab — entra no drop 2" }
+      { "role": "Piano", "suggestion": "Rhodes with sidechain on kick — short stab on off-beats" },
+      { "role": "Bass", "suggestion": "Sine sub, 60Hz — groove on off-beats" },
+      { "role": "Pad", "suggestion": "Long wavetable pad — enters on break" },
+      { "role": "Lead", "suggestion": "Pluck/stab — enters on drop 2" }
     ],
     "tips": [
-      "Dica específica para esse remix",
-      "Segunda dica de produção"
+      "Specific tip for this remix",
+      "Second production tip"
     ]
   }
 }`
