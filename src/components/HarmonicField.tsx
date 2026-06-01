@@ -23,7 +23,7 @@ export function HarmonicField({ ext, onExtChange, onChordClick, tonicOverride, m
 
   useEffect(() => { if (tonicOverride != null) setTonic(tonicOverride) }, [tonicOverride])
   useEffect(() => { if (moodOverride?.length) setActiveMoods(moodOverride) }, [moodOverride?.join(',')])
-  const [hoveredChord, setHoveredChord] = useState<HarmonicChord | null>(null)
+  const [selectedChord, setSelectedChord] = useState<HarmonicChord | null>(null)
   const [activeCategories, setActiveCategories] = useState<ChordCategory[]>(['diatonic', 'borrowed', 'sus', 'secondary'])
 
   const allChords = useMemo(() => buildHarmonicField(tonic, ext), [tonic, ext])
@@ -174,11 +174,12 @@ export function HarmonicField({ ext, onExtChange, onChordClick, tonicOverride, m
               {chords.map(chord => (
                 <button
                   key={chord.id}
-                  onClick={() => handleChordClick(chord)}
-                  onMouseEnter={e => { setHoveredChord(chord); (e.currentTarget as HTMLButtonElement).style.borderColor = meta.color; previewChord(chord.root, chord.intervals) }}
-                  onMouseLeave={e => { setHoveredChord(null); (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-border)' }}
+                  onClick={() => { setSelectedChord(prev => prev?.id === chord.id ? null : chord); previewChord(chord.root, chord.intervals) }}
                   className="btn-neumorphic flex flex-col items-center px-4 py-3 rounded-xl min-w-[72px] transition-all relative"
-                  style={{ color: 'var(--color-ink)' }}
+                  style={{
+                    color: 'var(--color-ink)',
+                    ...(selectedChord?.id === chord.id ? { borderColor: meta.color, boxShadow: `0 0 0 1.5px ${meta.color}` } : {}),
+                  }}
                 >
                   {badges[chord.name] && (
                     <span className="absolute top-1 right-1" onClick={e => e.stopPropagation()}>
@@ -196,35 +197,48 @@ export function HarmonicField({ ext, onExtChange, onChordClick, tonicOverride, m
         ))}
       </div>
 
-      {/* Preview do acorde hovereado */}
-      {hoveredChord && (
+      {/* Preview do acorde selecionado */}
+      {selectedChord && (
         <div className="card p-5 space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <span className="font-semibold text-lg" style={{ color: 'var(--color-ink)' }}>
-                {hoveredChord.name}
+                {selectedChord.name}
               </span>
-              <span className="font-mono text-xs ml-3" style={{ color: CATEGORY_META[hoveredChord.category].color }}>
-                {hoveredChord.roman}
+              <span className="font-mono text-xs ml-3" style={{ color: CATEGORY_META[selectedChord.category].color }}>
+                {selectedChord.roman}
               </span>
             </div>
-            <span className="text-sm px-3 py-1 rounded-full"
-              style={{
-                background: 'var(--color-bg)',
-                color: 'var(--color-muted)',
-                boxShadow: 'var(--shadow-btn)',
-              }}>
-              {hoveredChord.feeling}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm px-3 py-1 rounded-full"
+                style={{
+                  background: 'var(--color-bg)',
+                  color: 'var(--color-muted)',
+                  boxShadow: 'var(--shadow-btn)',
+                }}>
+                {selectedChord.feeling}
+              </span>
+              <button
+                onClick={() => { handleChordClick(selectedChord); setSelectedChord(null) }}
+                className="btn-primary text-sm px-4 py-1.5 rounded-xl font-semibold"
+              >
+                + Adicionar
+              </button>
+              <button
+                onClick={() => setSelectedChord(null)}
+                className="text-lg leading-none px-2"
+                style={{ color: 'var(--color-muted)' }}
+                title="Fechar"
+              >
+                ×
+              </button>
+            </div>
           </div>
           <VoicingKeyboard
-            root={hoveredChord.root}
-            intervals={hoveredChord.intervals}
-            ext={hoveredChord.ext}
+            root={selectedChord.root}
+            intervals={selectedChord.intervals}
+            ext={selectedChord.ext}
           />
-          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            Clique para adicionar à progressão
-          </p>
         </div>
       )}
     </div>

@@ -80,21 +80,6 @@ export function stopAll(): void {
   Tone.Transport.cancel()
 }
 
-let unifiedCleanup: (() => void) | null = null
-let unifiedTimer: ReturnType<typeof setTimeout> | null = null
-let unifiedStartMs: number | null = null
-let unifiedDurationMs: number | null = null
-
-export function getUnifiedProgress(): number | null {
-  if (unifiedStartMs === null || unifiedDurationMs === null) return null
-  const raw = (performance.now() - unifiedStartMs) / unifiedDurationMs
-  return Math.min(Math.max(raw, 0), 1)
-}
-
-export function getUnifiedDurationMs(): number | null {
-  return unifiedDurationMs
-}
-
 export interface UnifiedPlayOptions {
   kickEvents: MidiEvent[]
   pianoEvents: MidiEvent[]
@@ -107,24 +92,37 @@ export interface UnifiedPlayOptions {
   onEnd: () => void
 }
 
-export async function playUnified({
+// Inicializa o AudioContext (deve ser chamado no handler de clique do usuário)
+export async function initAudio(): Promise<void> {
+  await Tone.start()
+}
+
+// Disposers dos synths do playback atual
+const unifiedDisposers: Array<() => void> = []
+
+export function stopUnified(): void {
+  // Silencia imediatamente qualquer áudio já agendado no Web Audio timeline
+  try { Tone.getDestination().mute = true } catch { /* contexto não iniciado */ }
+  Tone.Transport.stop()
+  Tone.Transport.cancel()
+  unifiedDisposers.forEach(fn => fn())
+  unifiedDisposers.length = 0
+}
+
+// Síncrono após initAudio() — usa Tone.Transport para scheduling atômico
+export function playUnified({
   kickEvents, pianoEvents, bassEvents,
   bpm, tpq, muted, solo, timbre, onEnd,
-}: UnifiedPlayOptions): Promise<void> {
-  await Tone.start()
+}: UnifiedPlayOptions): void {
   stopUnified()
-  // Desmuta depois do stopUnified para o novo playback
-  Tone.getDestination().mute = false
+  Tone.getDestination().mute = false  // desmuta para o novo playback
+
+  Tone.Transport.bpm.value = bpm
 
   const secsPerTick = 60 / bpm / tpq
-  const now = Tone.now() + 0.1
 
-  const isActive = (track: TrackId): boolean => {
-    if (solo) return track === solo
-    return !muted.has(track)
-  }
-
-  const cleanups: Array<() => void> = []
+  const isActive = (track: TrackId): boolean =>
+    solo ? track === solo : !muted.has(track)
 
   if (isActive('kick') && kickEvents.length > 0) {
     const kickSynth = new Tone.MembraneSynth({
@@ -134,27 +132,26 @@ export async function playUnified({
     }).toDestination()
     kickSynth.volume.value = -4
     kickEvents.forEach(({ tick, duration }) => {
-      kickSynth.triggerAttackRelease(
-        'C1',
-        Math.max(duration * secsPerTick, 0.05),
-        now + tick * secsPerTick,
-        0.9,
-      )
+      Tone.Transport.schedule((time) => {
+        kickSynth.triggerAttackRelease('C1', Math.max(duration * secsPerTick, 0.05), time, 0.9)
+      }, tick * secsPerTick)
     })
-    cleanups.push(() => kickSynth.dispose())
+    unifiedDisposers.push(() => kickSynth.dispose())
   }
 
   if (isActive('chords') && pianoEvents.length > 0) {
     const { synth: chordSynth, cleanup } = createTimbreSynth(timbre)
     pianoEvents.forEach(({ tick, duration, note, velocity }) => {
-      chordSynth.triggerAttackRelease(
-        midiToNote(note),
-        Math.max(duration * secsPerTick, 0.05),
-        now + tick * secsPerTick,
-        velocity / 127,
-      )
+      Tone.Transport.schedule((time) => {
+        chordSynth.triggerAttackRelease(
+          midiToNote(note),
+          Math.max(duration * secsPerTick, 0.05),
+          time,
+          velocity / 127,
+        )
+      }, tick * secsPerTick)
     })
-    cleanups.push(cleanup)
+    unifiedDisposers.push(cleanup)
   }
 
   if (isActive('bass') && bassEvents.length > 0) {
@@ -165,41 +162,25 @@ export async function playUnified({
     }).toDestination()
     bassSynth.volume.value = -10
     bassEvents.forEach(({ tick, duration, note, velocity }) => {
-      bassSynth.triggerAttackRelease(
-        midiToNote(note),
-        Math.max(duration * secsPerTick, 0.05),
-        now + tick * secsPerTick,
-        velocity / 127,
-      )
+      Tone.Transport.schedule((time) => {
+        bassSynth.triggerAttackRelease(
+          midiToNote(note),
+          Math.max(duration * secsPerTick, 0.05),
+          time,
+          velocity / 127,
+        )
+      }, tick * secsPerTick)
     })
-    cleanups.push(() => bassSynth.dispose())
+    unifiedDisposers.push(() => bassSynth.dispose())
   }
 
-  unifiedCleanup = () => cleanups.forEach(fn => fn())
+  const lastTick = [...kickEvents, ...pianoEvents, ...bassEvents]
+    .reduce((max, e) => Math.max(max, e.tick + e.duration), 0)
 
-  const allEvents = [...kickEvents, ...pianoEvents, ...bassEvents]
-  const lastTick = allEvents.reduce((max, e) => Math.max(max, e.tick + e.duration), 0)
-  const totalMs = lastTick * secsPerTick * 1000
-
-  unifiedStartMs = performance.now() + 100
-  unifiedDurationMs = totalMs
-
-  unifiedTimer = setTimeout(() => {
-    unifiedTimer = null
-    unifiedCleanup?.()
-    unifiedCleanup = null
-    unifiedStartMs = null
-    unifiedDurationMs = null
-    onEnd()
-  }, totalMs + 150)
+  Tone.Transport.schedule(() => onEnd(), lastTick * secsPerTick + 0.15)
+  Tone.Transport.start()
 }
 
-export function stopUnified(): void {
-  // Muta o destino imediatamente — corta notas já agendadas no Web Audio timeline
-  try { Tone.getDestination().mute = true } catch { /* ignore se contexto não iniciado */ }
-  if (unifiedTimer !== null) { clearTimeout(unifiedTimer); unifiedTimer = null }
-  unifiedCleanup?.()
-  unifiedCleanup = null
-  unifiedStartMs = null
-  unifiedDurationMs = null
+export function getTransportSeconds(): number {
+  return Tone.Transport.seconds
 }

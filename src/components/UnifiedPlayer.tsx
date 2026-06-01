@@ -2,8 +2,10 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TrackRow } from './TrackRow'
 import { genKickEvents, kickStepsForGrid } from '../core/kick-pattern'
-import { playUnified, stopUnified } from '../audio/player'
-import type { MidiEvent, ParsedChord, GenreDefinition, Timbre, TrackId } from '../types'
+import { playUnified, stopUnified, initAudio, getTransportSeconds } from '../audio/player'
+import { reVoice } from '../core/reharmonizer'
+import { NOTE_NAMES } from '../core/parser'
+import type { MidiEvent, ParsedChord, GenreDefinition, Timbre, TrackId, Extension } from '../types'
 import { TPQ } from '../core/groove'
 
 interface Props {
@@ -13,6 +15,12 @@ interface Props {
   genre: GenreDefinition
   genreName: string
   chords: ParsedChord[]
+  ext: Extension
+}
+
+function midiNoteName(midi: number): string {
+  const oct = Math.floor(midi / 12) - 1
+  return NOTE_NAMES[midi % 12]! + oct
 }
 
 const TRACK_COLORS: Record<TrackId, string> = {
@@ -37,12 +45,11 @@ function eventsToSteps(events: MidiEvent[], bar: number): number[] {
   return Array.from(steps)
 }
 
-export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords }: Props) {
+export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genre, genreName, chords, ext }: Props) {
   const { t } = useTranslation()
   const [playing, setPlaying] = useState(false)
-  const [loop, setLoop] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [ended, setEnded] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [muted, setMuted] = useState<Set<TrackId>>(new Set())
   const [solo, setSolo] = useState<TrackId | null>(null)
   const [timbre, setTimbre] = useState<Timbre>('piano')
@@ -60,16 +67,8 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
   const chordsSteps = useMemo(() => eventsToSteps(pianoEvents, 0), [pianoEvents])
   const bassSteps = useMemo(() => eventsToSteps(bassEvents, 0), [bassEvents])
 
-  // Refs para capturar estado mais recente dentro de callbacks assíncronos
-  const loopRef = useRef(loop)
-  loopRef.current = loop
-
-  // Ref para evitar double-play: React state é async, ref é síncrono
   const playingRef = useRef(false)
-
-  // Tracking local de progresso — evita dependência de timing entre React e player.ts
-  const playStartRef = useRef<number | null>(null)
-  const totalMsRef = useRef(0)
+  const totalSecsRef = useRef(0)
 
   // Detecta mudança de eventos (extensão, gênero, acordes) — para o player e sinaliza atualização
   const prevPianoRef = useRef(pianoEvents)
@@ -82,7 +81,6 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
     if (playingRef.current) {
       stopUnified()
       playingRef.current = false
-      playStartRef.current = null
       setPlaying(false)
     }
     setHasUpdates(true)
@@ -91,63 +89,19 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
   const stateRef = useRef({ muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm })
   stateRef.current = { muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm }
 
-  // Computa duração total dos eventos (mesma lógica do player.ts)
-  const totalMs = useMemo(() => {
-    const allEvents = [...kickEvents, ...pianoEvents, ...bassEvents]
-    if (!allEvents.length) return 0
-    const lastTick = allEvents.reduce((max, e) => Math.max(max, e.tick + e.duration), 0)
-    return lastTick * (60 / bpm / TPQ) * 1000
-  }, [kickEvents, pianoEvents, bassEvents, bpm])
-  totalMsRef.current = totalMs
-
-  // rAF para atualizar o playhead — usa tracking local em vez de getUnifiedProgress()
+  // rAF para playhead — usa Tone.Transport.seconds (fonte de verdade atômica)
   useEffect(() => {
     if (!playing) { setProgress(0); return }
     let id: number
     const tick = () => {
-      if (playStartRef.current !== null && totalMsRef.current > 0) {
-        const elapsed = performance.now() - playStartRef.current
-        setProgress(Math.min(Math.max(elapsed / totalMsRef.current, 0), 1))
+      if (totalSecsRef.current > 0) {
+        setProgress(Math.min(getTransportSeconds() / totalSecsRef.current, 1))
       }
       id = requestAnimationFrame(tick)
     }
     id = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(id)
   }, [playing])
-
-  // Loop: quando onEnd dispara, React decide se reinicia ou para
-  useEffect(() => {
-    if (!ended) return
-    setEnded(false)
-    if (loopRef.current) {
-      doPlay().catch(() => {
-        playingRef.current = false
-        playStartRef.current = null
-        setPlaying(false)
-      })
-    } else {
-      playingRef.current = false
-      playStartRef.current = null
-      setPlaying(false)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ended])
-
-  const doPlay = async () => {
-    const s = stateRef.current
-    playStartRef.current = performance.now() + 100
-    await playUnified({
-      kickEvents: s.kickEvents,
-      pianoEvents: s.pianoEvents,
-      bassEvents: s.bassEvents,
-      bpm: s.bpm,
-      tpq: TPQ,
-      muted: s.muted,
-      solo: s.solo,
-      timbre: s.timbre,
-      onEnd: () => setEnded(true),
-    })
-  }
 
   const toggleMute = (id: TrackId) => {
     setMuted(prev => {
@@ -165,21 +119,39 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
     if (playingRef.current) {
       stopUnified()
       playingRef.current = false
-      playStartRef.current = null
       setPlaying(false)
       return
     }
     if (!pianoEvents.length && !bassEvents.length) return
+
+    // Inicia AudioContext no handler de clique (obrigatório pelo browser)
+    await initAudio()
+    // Guard: outro clique pode ter acontecido durante o await
+    if (playingRef.current) return
+
+    const s = stateRef.current
+    const secsPerTick = 60 / s.bpm / TPQ
+    const allEvents = [...s.kickEvents, ...s.pianoEvents, ...s.bassEvents]
+    totalSecsRef.current = allEvents.reduce((max, e) => Math.max(max, e.tick + e.duration), 0) * secsPerTick
+
     setHasUpdates(false)
     playingRef.current = true
     setPlaying(true)
-    try {
-      await doPlay()
-    } catch {
-      playingRef.current = false
-      playStartRef.current = null
-      setPlaying(false)
-    }
+
+    playUnified({
+      kickEvents: s.kickEvents,
+      pianoEvents: s.pianoEvents,
+      bassEvents: s.bassEvents,
+      bpm: s.bpm,
+      tpq: TPQ,
+      muted: s.muted,
+      solo: s.solo,
+      timbre: s.timbre,
+      onEnd: () => {
+        playingRef.current = false
+        setPlaying(false)
+      },
+    })
   }
 
   if (!chords.length) return null
@@ -209,20 +181,6 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
             Progressão atualizada
           </span>
         )}
-
-        {/* Loop toggle */}
-        <button
-          onClick={() => setLoop(v => !v)}
-          className="font-mono text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all"
-          style={{
-            background: loop ? 'rgba(138,180,240,0.15)' : 'var(--color-border)',
-            color: loop ? '#8ab4f0' : 'var(--color-muted)',
-            border: loop ? '1px solid #8ab4f0' : '1px solid transparent',
-          }}
-          title="Loop"
-        >
-          ⟳ Loop
-        </button>
 
         <span className="font-mono text-xs" style={{ color: 'var(--color-muted)' }}>
           {bpm} BPM · {numBars} {numBars === 1 ? 'compasso' : 'compassos'}
@@ -283,6 +241,83 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
             exportName={slug}
           />
         </div>
+      </div>
+
+      {/* Acordeão — voicings por acorde */}
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{ border: '1px solid var(--color-border)' }}
+      >
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors"
+          style={{
+            background: expanded ? 'rgba(138,180,240,0.07)' : 'var(--color-bg)',
+            color: 'var(--color-muted)',
+          }}
+        >
+          <span className="font-mono text-[10px] uppercase tracking-[3px]">
+            Voicings · {chords.length} acorde{chords.length !== 1 ? 's' : ''}
+          </span>
+          <span
+            className="text-xs transition-transform duration-200"
+            style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }}
+          >
+            ▾
+          </span>
+        </button>
+
+        {expanded && (
+          <div
+            className="px-4 pb-4 pt-2 grid gap-3"
+            style={{
+              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+              background: 'var(--color-bg)',
+            }}
+          >
+            {chords.map((chord, i) => {
+              const voiced = reVoice(chord.intervals, ext)
+              const notes = voiced.map(interval =>
+                midiNoteName(genre.pianoBase + chord.root + interval)
+              )
+              return (
+                <div
+                  key={i}
+                  className="rounded-lg px-3 py-2.5 space-y-2"
+                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+                >
+                  <div className="font-mono text-xs font-bold" style={{ color: 'var(--color-ink)' }}>
+                    {chord.tok}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {notes.map((n, j) => (
+                      <span
+                        key={j}
+                        className="font-mono text-[10px] px-1.5 py-0.5 rounded"
+                        style={{
+                          background: j === 0
+                            ? 'rgba(138,180,240,0.25)'
+                            : 'rgba(138,180,240,0.08)',
+                          color: j === 0
+                            ? '#8ab4f0'
+                            : 'var(--color-muted)',
+                          border: j === 0
+                            ? '1px solid rgba(138,180,240,0.4)'
+                            : '1px solid var(--color-border)',
+                        }}
+                      >
+                        {n}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="font-mono text-[9px]" style={{ color: 'var(--color-muted)', opacity: 0.6 }}>
+                    {voiced.length} nota{voiced.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

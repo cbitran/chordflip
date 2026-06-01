@@ -173,6 +173,7 @@ export default function App() {
               genre={genre}
               genreName={genreName}
               chords={parsedChords}
+              ext={ext}
             />
           </section>
         )}
@@ -357,6 +358,7 @@ export default function App() {
             genre={genre}
             genreName={genreName}
             chords={parsedChords}
+            ext={ext}
           />
         </section>
       )}

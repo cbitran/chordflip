@@ -62,9 +62,16 @@ export function GuideNarration({ step, result, onNext, onDone }: Props) {
           )}
 
           {/* Call to action para o player */}
-          <p className="text-sm font-medium" style={{ color: 'var(--color-primary)' }}>
+          <div
+            className="text-sm font-medium px-4 py-3 rounded-xl"
+            style={{
+              background: 'rgba(186,216,255,0.18)',
+              border: '1px solid rgba(138,180,240,0.45)',
+              color: 'var(--color-ink)',
+            }}
+          >
             ↓ Dê um play abaixo e ouça como vai soar. Mute ou solo as trilhas para ouvir cada camada separada.
-          </p>
+          </div>
         </div>
       )}
 
