@@ -4,6 +4,11 @@ import { trackBytes, midiFile, downloadMidi } from '../core/midi-writer'
 
 const STEPS = 16
 
+interface ChordBlock {
+  label: string
+  noteCount: number
+}
+
 interface TrackRowProps {
   id: TrackId
   label: string
@@ -13,6 +18,7 @@ interface TrackRowProps {
   onMute: () => void
   onSolo: () => void
   activeSteps: number[]
+  chordBlocks?: ChordBlock[]
   timbre?: Timbre
   onTimbreChange?: (t: Timbre) => void
   events?: MidiEvent[]
@@ -24,7 +30,7 @@ const TIMBRES: Timbre[] = ['pad', 'pluck', 'lead', 'piano']
 
 export function TrackRow({
   id, label, color, muted, solo,
-  onMute, onSolo, activeSteps,
+  onMute, onSolo, activeSteps, chordBlocks,
   timbre, onTimbreChange,
   events, bpm, exportName,
 }: TrackRowProps) {
@@ -107,43 +113,73 @@ export function TrackRow({
         !isKick && <div className="w-16 shrink-0" />
       )}
 
-      <div className="flex-1 flex gap-px">
-        {Array.from({ length: STEPS }, (_, i) => {
-          const active = activeSet.has(i)
-          if (isKick) {
+      {chordBlocks ? (
+        <div className="flex-1 flex gap-1">
+          {chordBlocks.map((cb, i) => (
+            <div
+              key={i}
+              className="flex-1 flex flex-col justify-center px-2 rounded"
+              style={{
+                height: 36,
+                background: `${color}bb`,
+                border: `1px solid ${color}`,
+                minWidth: 0,
+              }}
+            >
+              <span
+                className="font-mono text-[11px] font-bold leading-tight truncate"
+                style={{ color: 'rgba(0,0,0,0.85)' }}
+              >
+                {cb.label}
+              </span>
+              <span
+                className="font-mono text-[9px] leading-tight"
+                style={{ color: 'rgba(0,0,0,0.55)' }}
+              >
+                {cb.noteCount} notas
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex-1 flex gap-px">
+          {Array.from({ length: STEPS }, (_, i) => {
+            const active = activeSet.has(i)
+            if (isKick) {
+              return (
+                <div
+                  key={i}
+                  className="flex-1 flex items-center justify-center"
+                  style={{ height: 16, borderLeft: i % 4 === 0 ? '1px solid rgba(128,128,128,0.15)' : undefined }}
+                >
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: active ? color : 'var(--color-border)',
+                      opacity: active ? 1 : 0.35,
+                      transition: 'opacity 0.15s',
+                    }}
+                  />
+                </div>
+              )
+            }
             return (
               <div
                 key={i}
-                className="flex-1 flex items-center justify-center"
-                style={{ height: 16, borderLeft: i % 4 === 0 ? '1px solid rgba(128,128,128,0.15)' : undefined }}
-              >
-                <div
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: active ? color : 'var(--color-border)',
-                    opacity: active ? 1 : 0.35,
-                    transition: 'opacity 0.15s',
-                  }}
-                />
-              </div>
+                className="flex-1 rounded-sm transition-all"
+                style={{
+                  height: 16,
+                  background: active ? color : 'var(--color-border)',
+                  opacity: active ? 0.8 : 0.35,
+                  borderLeft: i % 4 === 0 ? '1px solid rgba(128,128,128,0.15)' : undefined,
+                }}
+              />
             )
-          }
-          return (
-            <div
-              key={i}
-              className="flex-1 rounded-sm transition-all"
-              style={{
-                height: 16,
-                background: active ? color : 'var(--color-border)',
-                opacity: active ? 0.8 : 0.35,
-                borderLeft: i % 4 === 0 ? '1px solid rgba(128,128,128,0.15)' : undefined,
-              }}
-            />
-          )
-        })}
-      </div>
+          })}
+        </div>
+      )}
 
       {!isKick && events ? (
         <button

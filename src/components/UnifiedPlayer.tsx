@@ -4,7 +4,6 @@ import { TrackRow } from './TrackRow'
 import { genKickEvents, kickStepsForGrid } from '../core/kick-pattern'
 import { playUnified, stopUnified, initAudio, getTransportSeconds, getLoopDuration } from '../audio/player'
 import { reVoice } from '../core/reharmonizer'
-import { NOTE_NAMES } from '../core/parser'
 import type { MidiEvent, ParsedChord, GenreDefinition, Timbre, TrackId, Extension } from '../types'
 import { TPQ } from '../core/groove'
 
@@ -16,11 +15,6 @@ interface Props {
   genreName: string
   chords: ParsedChord[]
   ext: Extension
-}
-
-function midiNoteName(midi: number): string {
-  const oct = Math.floor(midi / 12) - 1
-  return NOTE_NAMES[midi % 12]! + oct
 }
 
 const TRACK_COLORS: Record<TrackId, string> = {
@@ -45,12 +39,11 @@ function eventsToSteps(events: MidiEvent[], bar: number): number[] {
   return Array.from(steps)
 }
 
-export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genre, genreName, chords, ext }: Props) {
+export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords, ext }: Props) {
   const { t } = useTranslation()
   const [playing, setPlaying] = useState(false)
   const [loop, setLoop] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [expanded, setExpanded] = useState(false)
   const [muted, setMuted] = useState<Set<TrackId>>(new Set())
   const [solo, setSolo] = useState<TrackId | null>(null)
   const [timbre, setTimbre] = useState<Timbre>('piano')
@@ -67,6 +60,14 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genre, genreName, 
   const kickSteps = useMemo(() => kickStepsForGrid(genreName), [genreName])
   const chordsSteps = useMemo(() => eventsToSteps(pianoEvents, 0), [pianoEvents])
   const bassSteps = useMemo(() => eventsToSteps(bassEvents, 0), [bassEvents])
+
+  const chordBlocks = useMemo(() =>
+    chords.map(c => ({
+      label: c.tok,
+      noteCount: reVoice(c.intervals, ext).length,
+    })),
+    [chords, ext],
+  )
 
   const playingRef = useRef(false)
   const loopRef = useRef(loop)
@@ -246,6 +247,7 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genre, genreName, 
             onMute={() => toggleMute('chords')}
             onSolo={() => toggleSolo('chords')}
             activeSteps={chordsSteps}
+            chordBlocks={chordBlocks}
             timbre={timbre}
             onTimbreChange={setTimbre}
             events={pianoEvents}
@@ -268,82 +270,6 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genre, genreName, 
         </div>
       </div>
 
-      {/* Acordeão — voicings por acorde */}
-      <div
-        className="rounded-xl overflow-hidden"
-        style={{ border: '1px solid var(--color-border)' }}
-      >
-        <button
-          onClick={() => setExpanded(v => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors"
-          style={{
-            background: expanded ? 'rgba(138,180,240,0.07)' : 'var(--color-bg)',
-            color: 'var(--color-muted)',
-          }}
-        >
-          <span className="font-mono text-[10px] uppercase tracking-[3px]">
-            Voicings · {chords.length} acorde{chords.length !== 1 ? 's' : ''}
-          </span>
-          <span
-            className="text-xs transition-transform duration-200"
-            style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }}
-          >
-            ▾
-          </span>
-        </button>
-
-        {expanded && (
-          <div
-            className="px-4 pb-4 pt-2 grid gap-3"
-            style={{
-              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-              background: 'var(--color-bg)',
-            }}
-          >
-            {chords.map((chord, i) => {
-              const voiced = reVoice(chord.intervals, ext)
-              const notes = voiced.map(interval =>
-                midiNoteName(genre.pianoBase + chord.root + interval)
-              )
-              return (
-                <div
-                  key={i}
-                  className="rounded-lg px-3 py-2.5 space-y-2"
-                  style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
-                >
-                  <div className="font-mono text-xs font-bold" style={{ color: 'var(--color-ink)' }}>
-                    {chord.tok}
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {notes.map((n, j) => (
-                      <span
-                        key={j}
-                        className="font-mono text-[10px] px-1.5 py-0.5 rounded"
-                        style={{
-                          background: j === 0
-                            ? 'rgba(138,180,240,0.25)'
-                            : 'rgba(138,180,240,0.08)',
-                          color: j === 0
-                            ? '#8ab4f0'
-                            : 'var(--color-muted)',
-                          border: j === 0
-                            ? '1px solid rgba(138,180,240,0.4)'
-                            : '1px solid var(--color-border)',
-                        }}
-                      >
-                        {n}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="font-mono text-[9px]" style={{ color: 'var(--color-muted)', opacity: 0.6 }}>
-                    {voiced.length} nota{voiced.length !== 1 ? 's' : ''}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
     </div>
   )
 }
