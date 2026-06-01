@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useState, useRef, useEffect } from 'react'
+import { AIButton } from './AIButton'
 
 const LANGS = [
   { code: 'pt-BR', label: 'PT', flag: '🇧🇷' },
@@ -86,6 +87,7 @@ export function Navbar() {
 
       {/* Ações */}
       <div className="flex items-center gap-2">
+        <AIButton />
         <LangDropdown />
 
         {/* Toggle tema */}
