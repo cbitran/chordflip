@@ -29,15 +29,24 @@ export function Layout({ children, sectionIds }: Props) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--color-bg)' }}>
-      <Sidebar active={active} onNav={handleNav} />
-      <main
-        ref={mainRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-8 py-10 pb-20"
+    <div className="min-h-screen overflow-y-auto" style={{ background: 'var(--color-outer-bg)' }}>
+      <div
+        className="flex h-screen overflow-hidden mx-auto"
+        style={{
+          maxWidth: 1440,
+          background: 'var(--color-bg)',
+          boxShadow: '0 0 80px rgba(0,0,0,0.15)',
+        }}
       >
-        {children}
-      </main>
+        <Sidebar active={active} onNav={handleNav} />
+        <main
+          ref={mainRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto px-10 py-10 pb-20"
+        >
+          {children}
+        </main>
+      </div>
     </div>
   )
 }
