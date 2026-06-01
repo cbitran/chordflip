@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -19,6 +19,8 @@ export function LoginPage() {
   const { t } = useTranslation()
   const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const successMsg = (location.state as { message?: string } | null)?.message
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -139,9 +141,9 @@ export function LoginPage() {
           </div>
 
           <div className="mt-4 space-y-2 text-center">
-            <button className="text-xs" style={{ color: 'var(--color-muted)' }}>
+            <Link to="/esqueci-senha" className="text-xs" style={{ color: 'var(--color-muted)' }}>
               {t('auth.forgotPassword')}
-            </button>
+            </Link>
             <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
               {t('auth.noAccount')}{' '}
               <Link to="/cadastro" style={{ color: 'var(--color-primary)' }} className="font-semibold">

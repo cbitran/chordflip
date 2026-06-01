@@ -12,6 +12,8 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { AccountPage } from './pages/AccountPage'
 import { LegalPage } from './pages/LegalPage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 
 function Root() {
   return (
@@ -23,6 +25,8 @@ function Root() {
           <Route path="/login"      element={<LoginPage />} />
           <Route path="/cadastro"   element={<RegisterPage />} />
           <Route path="/conta"      element={<AccountPage />} />
+          <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
+          <Route path="/nova-senha"    element={<ResetPasswordPage />} />
           <Route path="/privacidade" element={<LegalPage page="privacidade" />} />
           <Route path="/termos"     element={<LegalPage page="termos" />} />
           <Route path="/reembolso"  element={<LegalPage page="reembolso" />} />
