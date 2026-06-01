@@ -126,6 +126,7 @@ export function AIWizard() {
   const [localBpm, setLocalBpm] = useState(session.bpm)
   const [localFeeling, setLocalFeeling] = useState<string[]>([])
   const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState('')
 
   // Reset ao abrir
   useEffect(() => {
@@ -135,6 +136,7 @@ export function AIWizard() {
       setLocalBpm(session.bpm)
       setLocalFeeling([])
       setGenerating(false)
+      setError('')
     }
   }, [wizardOpen])
 
@@ -172,12 +174,18 @@ export function AIWizard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session: snap, lang: i18n.language }),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(err.error ?? `Erro ${res.status}`)
+      }
       const data = await res.json() as { chords?: string[]; explanation?: string }
-      setSuggestionFromGroq({ chords: data.chords ?? [], explanation: data.explanation ?? '' })
+      if (!data.chords?.length) throw new Error('Groq não retornou acordes. Tente novamente.')
+      setSuggestionFromGroq({ chords: data.chords, explanation: data.explanation ?? '' })
       setWizardOpen(false)
       setPanelOpen(true)
-    } catch {
+    } catch (err) {
       setStatus('idle')
+      setError(err instanceof Error ? err.message : 'Erro ao gerar sugestão')
     } finally {
       setGenerating(false)
     }
@@ -295,6 +303,11 @@ export function AIWizard() {
                 </button>
               ))}
             </div>
+            {error && (
+              <p className="text-xs px-3 py-2 rounded-xl mt-2" style={{ background: 'rgba(232,138,138,0.1)', color: '#e88a8a' }}>
+                {error}
+              </p>
+            )}
             <div className="flex justify-between mt-4">
               <button onClick={() => setStep(2)} className="text-xs" style={{ color: 'var(--color-muted)' }}>{t('ai.back')}</button>
               <button

@@ -137,22 +137,30 @@ export function AIPanel({ onApply }: { onApply: (chords: string[]) => void }) {
               </p>
 
               {/* Chips de acordes */}
-              <div className="flex flex-wrap gap-2">
-                {suggestion.chords.map((chord, i) => (
-                  <span
-                    key={i}
-                    className="px-4 py-2 rounded-xl text-sm font-semibold"
-                    style={{ background: 'var(--color-primary)', color: 'var(--color-bg)' }}
-                  >
-                    {chord}
-                  </span>
-                ))}
-              </div>
+              {suggestion.chords.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {suggestion.chords.map((chord, i) => (
+                    <span
+                      key={i}
+                      className="px-4 py-2.5 rounded-xl text-sm font-bold tracking-wide"
+                      style={{ background: 'var(--color-primary)', color: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
+                    >
+                      {chord}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs px-3 py-2 rounded-xl" style={{ background: 'rgba(232,138,138,0.1)', color: '#e88a8a' }}>
+                  Nenhum acorde retornado. Tente novamente.
+                </p>
+              )}
 
               {/* Explicação */}
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-ink)' }}>
-                {suggestion.explanation}
-              </p>
+              {suggestion.explanation && (
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--color-ink)' }}>
+                  {suggestion.explanation}
+                </p>
+              )}
 
               {/* Ações */}
               <div className="flex gap-2 pt-2">

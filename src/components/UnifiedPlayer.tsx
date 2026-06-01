@@ -63,6 +63,9 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
   const loopRef = useRef(loop)
   loopRef.current = loop
 
+  // Ref para evitar double-play: React state é async, ref é síncrono
+  const playingRef = useRef(false)
+
   const stateRef = useRef({ muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm })
   stateRef.current = { muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm }
 
@@ -86,6 +89,7 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
     if (loopRef.current) {
       doPlay()
     } else {
+      playingRef.current = false
       setPlaying(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,12 +123,14 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
   }
 
   const handlePlay = async () => {
-    if (playing) {
+    if (playingRef.current) {
       stopUnified()
+      playingRef.current = false
       setPlaying(false)
       return
     }
     if (!pianoEvents.length && !bassEvents.length) return
+    playingRef.current = true
     setPlaying(true)
     await doPlay()
   }
