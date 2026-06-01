@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -19,8 +19,6 @@ export function LoginPage() {
   const { t } = useTranslation()
   const { login, loginWithGoogle } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
-  const successMsg = (location.state as { message?: string } | null)?.message
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
