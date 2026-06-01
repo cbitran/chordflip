@@ -54,7 +54,7 @@ export function ProgressionGallery({ tonic, genreName, ext, onSelect, selectedId
             key={sk.id}
             onClick={() => onSelect(chords, sk)}
             className={`text-left p-5 rounded-2xl border transition-all ${
-              isSelected ? 'ring-2' : 'card hover:scale-[1.01]'
+              isSelected ? '' : 'card'
             }`}
             style={
               isSelected

@@ -48,11 +48,16 @@ export function Sidebar({ active, onNav }: Props) {
             <button
               key={item.id}
               onClick={() => onNav(item.id)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all text-sm ${
-                isActive
-                  ? 'btn-primary font-semibold'
-                  : 'btn-neumorphic text-muted hover:text-ink'
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-all ${
+                isActive ? 'btn-primary font-semibold' : 'btn-neumorphic'
               }`}
+            style={
+              isActive
+                ? {}
+                : { color: 'var(--color-muted)' }
+            }
+            onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--color-ink)' }}
+            onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--color-muted)' }}
             >
               <span className="font-mono text-base w-5 text-center leading-none">
                 {item.icon}
