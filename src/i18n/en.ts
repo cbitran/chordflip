@@ -12,6 +12,8 @@ export default {
     subtitle: 'Paste your chords, choose the style and groove, and download MIDI ready for your DAW.',
   },
   sections: {
+    search: 'Search song',
+    searchHint: 'Enter the artist and song you want to remix. The system identifies the key and generates the remix guide.',
     chords: 'Paste chords',
     chordsHint: 'Copy from Chordify or Ultimate Guitar. Use C7 for dominant chords.',
     style: 'Style',

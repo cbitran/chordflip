@@ -12,6 +12,8 @@ export default {
     subtitle: 'Pega tus acordes, elige el estilo y el groove, y descarga el MIDI listo para tu DAW.',
   },
   sections: {
+    search: 'Buscar canción',
+    searchHint: 'Escribe el artista y la canción que quieres remixar. El sistema identifica la tonalidad y genera la guía del remix.',
     chords: 'Pega los acordes',
     chordsHint: 'Copia de Chordify o Ultimate Guitar. Usa C7 para acordes dominantes.',
     style: 'Estilo',

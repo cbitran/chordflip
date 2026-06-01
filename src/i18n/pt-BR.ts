@@ -12,6 +12,8 @@ export default {
     subtitle: 'Cole os acordes da música, escolha o estilo e o groove, e baixe o MIDI pronto pro Ableton.',
   },
   sections: {
+    search: 'Buscar música',
+    searchHint: 'Digite o artista e a música que quer remixar. O sistema identifica a tonalidade e gera o guia do remix.',
     chords: 'Cole os acordes',
     chordsHint: 'Copie do Chordify ou Ultimate Guitar. Use C7 onde quiser dominante.',
     style: 'Estilo',

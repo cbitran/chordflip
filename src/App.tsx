@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { parseProg } from './core/parser'
 import { reVoice, nameChord } from './core/reharmonizer'
 import { genEvents, TPQ } from './core/groove'
@@ -19,6 +20,7 @@ import type { SavedProject } from './lib/projects'
 
 
 export default function App() {
+  const { t } = useTranslation()
   const [text, setText] = useState('F Am Bb C')
   const [genreName, setGenreName] = useState('House')
   const [extOverride, setExtOverride] = useState<Extension | null>(null)
@@ -84,8 +86,8 @@ export default function App() {
       <section className="mb-10">
         <SectionHeader
           number="00"
-          title="Buscar música"
-          subtitle="Digite o artista e a música que quer remixar. O sistema identifica a tonalidade e gera o guia do remix."
+          title={t('sections.search', 'Buscar música')}
+          subtitle={t('sections.searchHint', 'Digite o artista e a música que quer remixar. O sistema identifica a tonalidade e gera o guia do remix.')}
         />
         <SongSearch
           onAnalysis={(analysis: SongAnalysis, chords: string) => {
@@ -103,17 +105,16 @@ export default function App() {
           className="font-mono text-[10px] uppercase tracking-[4px] mb-3"
           style={{ color: 'var(--color-muted)' }}
         >
-          Acordes → MIDI por Estilo
+          {t('hero.kicker')}
         </div>
         <h1
           className="font-sans text-5xl font-bold leading-tight"
           style={{ color: 'var(--color-ink)' }}
         >
-          Reharm Studio
+          {t('hero.title')}
         </h1>
         <p className="text-base mt-2 max-w-lg leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-          Cole os acordes da música, escolha o estilo e o groove,
-          e baixe o MIDI de piano e baixo — pronto pro Ableton.
+          {t('hero.subtitle')}
         </p>
       </header>
 
@@ -121,15 +122,15 @@ export default function App() {
       <section id="acordes" className="mb-10 scroll-mt-6">
         <SectionHeader
           number="01"
-          title="Cole os acordes"
-          subtitle="Copie do Chordify ou Ultimate Guitar. Use C7 onde quiser dominante."
+          title={t('sections.chords')}
+          subtitle={t('sections.chordsHint')}
         />
         <ChordInput value={text} onChange={setText} reharm={reharm} bad={bad} />
       </section>
 
       {/* 02 — Estilo */}
       <section id="estilo" className="mb-10 scroll-mt-6">
-        <SectionHeader number="02" title="Estilo" subtitle="Escolha o gênero e ajuste extensão e BPM." />
+        <SectionHeader number="02" title={t('sections.style')} subtitle={t('sections.styleHint')} />
         <GenreSelector
           genre={genreName}
           ext={ext}
@@ -144,8 +145,8 @@ export default function App() {
       <section id="progressoes" className="mb-10 scroll-mt-6">
         <SectionHeader
           number="03"
-          title="Campo Harmônico"
-          subtitle="Escolha a tonalidade e clique nos acordes para montar sua progressão. Nunca vai errar."
+          title={t('sections.harmonic')}
+          subtitle={t('sections.harmonicHint')}
         />
         <HarmonicField
           ext={ext}
@@ -161,8 +162,8 @@ export default function App() {
       <section id="groove" className="mb-10 scroll-mt-6">
         <SectionHeader
           number="04"
-          title="Groove"
-          subtitle="Swing e viradas definem o balanço rítmico do MIDI gerado."
+          title={t('sections.groove')}
+          subtitle={t('sections.grooveHint')}
         />
         <GrooveControls
           swing={swing}
@@ -179,8 +180,8 @@ export default function App() {
       <section id="grid" className="mb-10 scroll-mt-6">
         <SectionHeader
           number="05"
-          title="Grid rítmico"
-          subtitle="Visualização dos eventos gerados no grid de 16 steps."
+          title={t('sections.grid')}
+          subtitle={t('sections.gridHint')}
         />
         {parsedChords.length > 0 ? (
           <div className="card p-6">
@@ -199,8 +200,8 @@ export default function App() {
       <section id="export" className="mb-10 scroll-mt-6">
         <SectionHeader
           number="06"
-          title="Resultado"
-          subtitle="Ouça o preview e baixe os MIDIs separados por instrumento."
+          title={t('sections.export')}
+          subtitle={t('sections.exportHint')}
         />
         <ExportButtons
           chords={parsedChords}
@@ -220,8 +221,8 @@ export default function App() {
       <section id="instrumentos" className="mb-10 scroll-mt-6">
         <SectionHeader
           number="07"
-          title="Instrumentos sugeridos"
-          subtitle={`Devices e dicas de produção para ${genreName}.`}
+          title={t('sections.instruments')}
+          subtitle={`${t('sections.instruments')} · ${genreName}`}
         />
         <InstrumentGuide genreName={genreName} inst={genre.inst} />
       </section>
