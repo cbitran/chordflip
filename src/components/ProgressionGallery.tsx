@@ -10,19 +10,22 @@ interface Props {
   selectedId: string | null
 }
 
-function transposeToKey(skeleton: ProgressionSkeleton, tonic: number, ext: Extension) {
+const QUALITY_MAP: Record<string, number[]> = {
+  maj: [0, 4, 7], m: [0, 3, 7], dim: [0, 3, 6],
+  maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10],
+  '7': [0, 4, 7, 10], 'm7b5': [0, 3, 6, 10],
+}
+
+function transposeToKey(
+  skeleton: ProgressionSkeleton,
+  tonic: number,
+  ext: Extension,
+): (ParsedChord & { name: string; reharmonizedIntervals: number[] })[] {
   return skeleton.degrees.map((deg, i) => {
     const root = (tonic + deg) % 12
-    const qualStr = skeleton.qualities[i] ?? ''
-
-    const QUALITY_MAP: Record<string, number[]> = {
-      maj: [0, 4, 7], m: [0, 3, 7], dim: [0, 3, 6], 'maj7': [0, 4, 7, 11],
-      m7: [0, 3, 7, 10], '7': [0, 4, 7, 10], 'm7b5': [0, 3, 6, 10],
-    }
-    const baseIntervals = QUALITY_MAP[qualStr] ?? [0, 4, 7]
+    const baseIntervals = QUALITY_MAP[skeleton.qualities[i] ?? 'maj'] ?? [0, 4, 7]
     const reharmonized = reVoice(baseIntervals, ext)
     const name = nameChord(root, reharmonized)
-
     return { root, intervals: baseIntervals, reharmonizedIntervals: reharmonized, tok: name, ok: true, name }
   })
 }
@@ -32,8 +35,8 @@ export function ProgressionGallery({ tonic, genreName, ext, onSelect, selectedId
 
   if (tonic === null) {
     return (
-      <div className="bg-panel border border-white/8 rounded-xl p-5 text-center">
-        <p className="text-muted text-sm font-mono">
+      <div className="card p-8 text-center">
+        <p className="font-mono text-sm" style={{ color: 'var(--color-muted)' }}>
           Digite acordes na seção 01 para ver progressões sugeridas
         </p>
       </div>
@@ -41,7 +44,7 @@ export function ProgressionGallery({ tonic, genreName, ext, onSelect, selectedId
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-4 sm:grid-cols-2">
       {skeletons.map(sk => {
         const chords = transposeToKey(sk, tonic, ext)
         const isSelected = selectedId === sk.id
@@ -50,31 +53,77 @@ export function ProgressionGallery({ tonic, genreName, ext, onSelect, selectedId
           <button
             key={sk.id}
             onClick={() => onSelect(chords, sk)}
-            className={`text-left p-4 rounded-xl border transition-all ${
-              isSelected
-                ? 'bg-accent/10 border-accent'
-                : 'bg-panel border-white/8 hover:border-accent/50'
+            className={`text-left p-5 rounded-2xl border transition-all ${
+              isSelected ? 'ring-2' : 'card hover:scale-[1.01]'
             }`}
+            style={
+              isSelected
+                ? {
+                    background: 'var(--color-card)',
+                    borderColor: 'var(--color-primary)',
+                    boxShadow: 'var(--shadow-card)',
+                    outline: `2px solid var(--color-primary)`,
+                  }
+                : {}
+            }
           >
-            <div className="flex items-start justify-between mb-2">
-              <span className="font-mono text-xs text-accent font-medium">{sk.name}</span>
+            {/* Cabeçalho */}
+            <div className="flex items-center justify-between mb-3">
+              <span
+                className="font-mono text-xs font-semibold"
+                style={{ color: 'var(--color-primary)' }}
+              >
+                {sk.name}
+              </span>
               {isSelected && (
-                <span className="font-mono text-[10px] text-accent bg-accent/20 px-2 py-0.5 rounded">
-                  selecionada
+                <span
+                  className="font-mono text-[10px] px-2 py-0.5 rounded-full"
+                  style={{
+                    background: 'var(--color-primary)',
+                    color: 'var(--color-bg)',
+                  }}
+                >
+                  ativo
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap gap-1.5 mb-2">
+
+            {/* Acordes */}
+            <div className="flex flex-wrap items-center gap-1 mb-3">
               {chords.map((c, i) => (
-                <span key={i} className="font-mono text-sm font-bold text-ink">
-                  {c.name}{i < chords.length - 1 && <span className="text-muted mx-1">–</span>}
+                <span key={i} className="flex items-center gap-1">
+                  <span
+                    className="font-serif text-lg font-normal"
+                    style={{ color: 'var(--color-ink)' }}
+                  >
+                    {c.name}
+                  </span>
+                  {i < chords.length - 1 && (
+                    <span className="font-mono text-xs" style={{ color: 'var(--color-muted)' }}>
+                      –
+                    </span>
+                  )}
                 </span>
               ))}
             </div>
-            <p className="text-xs text-muted leading-relaxed">{sk.description}</p>
-            <div className="flex flex-wrap gap-1 mt-2">
+
+            {/* Descrição */}
+            <p className="text-xs leading-relaxed mb-3" style={{ color: 'var(--color-muted)' }}>
+              {sk.description}
+            </p>
+
+            {/* Tags */}
+            <div className="flex flex-wrap gap-1">
               {sk.tags.map(tag => (
-                <span key={tag} className="font-mono text-[10px] text-muted/60 bg-white/5 px-1.5 py-0.5 rounded">
+                <span
+                  key={tag}
+                  className="font-mono text-[10px] px-2 py-0.5 rounded-full"
+                  style={{
+                    background: 'var(--color-bg)',
+                    color: 'var(--color-muted)',
+                    boxShadow: 'var(--shadow-btn)',
+                  }}
+                >
                   {tag}
                 </span>
               ))}

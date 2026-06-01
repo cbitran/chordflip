@@ -1,6 +1,7 @@
 import { trackBytes, midiFile, downloadMidi } from '../core/midi-writer'
 import { genEvents } from '../core/groove'
 import type { ParsedChord, Extension, ViradasMode, GenreDefinition } from '../types'
+import { EXT_LABEL, VIRADAS_LABEL } from '../genres'
 
 interface Props {
   chords: ParsedChord[]
@@ -19,7 +20,13 @@ export function ExportButtons({
   chords, ext, genre, genreName, bpm, swing, viradas,
   sectionName, playing, onPlay,
 }: Props) {
-  if (!chords.length) return null
+  if (!chords.length) return (
+    <div className="card p-6">
+      <p className="font-mono text-sm" style={{ color: 'var(--color-muted)' }}>
+        Digite acordes válidos para habilitar o preview e o export.
+      </p>
+    </div>
+  )
 
   const slug = `${sectionName.toLowerCase().replace(/\s+/g, '-')}-${genreName.toLowerCase().replace(/\s+/g, '')}`
 
@@ -27,11 +34,7 @@ export function ExportButtons({
     const { pe, be } = genEvents(chords, ext, genre, swing / 100, viradas)
     if (which === 'full') {
       downloadMidi(
-        midiFile([
-          trackBytes([], bpm, 'Tempo'),
-          trackBytes(pe, null, 'Piano'),
-          trackBytes(be, null, 'Bass'),
-        ]),
+        midiFile([trackBytes([], bpm, 'Tempo'), trackBytes(pe, null, 'Piano'), trackBytes(be, null, 'Bass')]),
         `${slug}-full.mid`,
       )
     } else if (which === 'piano') {
@@ -42,35 +45,43 @@ export function ExportButtons({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+    <div className="card p-6 space-y-4">
+      <div className="flex flex-wrap gap-3">
         <button
           onClick={onPlay}
-          className="bg-good text-bg border border-good rounded-xl px-5 py-3 text-sm font-semibold transition-all hover:opacity-90"
+          className="btn-primary px-6 py-3 text-sm font-semibold rounded-xl flex items-center gap-2"
         >
-          {playing ? '■ Parar' : '▶ Ouvir'}
+          <span>{playing ? '■' : '▶'}</span>
+          {playing ? 'Parar' : 'Ouvir groove'}
         </button>
+
         <button
           onClick={() => doDownload('full')}
-          className="bg-transparent text-accent border border-accent rounded-xl px-4 py-3 font-mono text-xs transition-all hover:bg-accent/10"
+          className="btn-neumorphic px-5 py-3 font-mono text-xs rounded-xl flex items-center gap-2"
+          style={{ color: 'var(--color-primary)' }}
         >
           ⬇ MIDI completo
         </button>
+
         <button
           onClick={() => doDownload('piano')}
-          className="bg-transparent text-muted border border-white/12 rounded-xl px-4 py-3 font-mono text-xs transition-all hover:border-accent hover:text-ink"
+          className="btn-neumorphic px-4 py-3 font-mono text-xs rounded-xl"
+          style={{ color: 'var(--color-muted)' }}
         >
           ⬇ piano
         </button>
+
         <button
           onClick={() => doDownload('bass')}
-          className="bg-transparent text-muted border border-white/12 rounded-xl px-4 py-3 font-mono text-xs transition-all hover:border-accent hover:text-ink"
+          className="btn-neumorphic px-4 py-3 font-mono text-xs rounded-xl"
+          style={{ color: 'var(--color-muted)' }}
         >
           ⬇ bass
         </button>
       </div>
-      <p className="font-mono text-xs text-muted">
-        {genreName} · {bpm} BPM · swing {swing}% · {chords.length} compasso(s)
+
+      <p className="font-mono text-xs" style={{ color: 'var(--color-muted)' }}>
+        {genreName} · {EXT_LABEL[ext]} · {bpm} BPM · swing {swing}% · {VIRADAS_LABEL[viradas]} · {chords.length} compasso(s)
       </p>
     </div>
   )
