@@ -108,6 +108,8 @@ export async function playUnified({
 }: UnifiedPlayOptions): Promise<void> {
   await Tone.start()
   stopUnified()
+  // Desmuta depois do stopUnified para o novo playback
+  Tone.getDestination().mute = false
 
   const secsPerTick = 60 / bpm / tpq
   const now = Tone.now() + 0.1
@@ -188,6 +190,8 @@ export async function playUnified({
 }
 
 export function stopUnified(): void {
+  // Muta o destino imediatamente — corta notas já agendadas no Web Audio timeline
+  try { Tone.getDestination().mute = true } catch { /* ignore se contexto não iniciado */ }
   if (unifiedTimer !== null) { clearTimeout(unifiedTimer); unifiedTimer = null }
   unifiedCleanup?.()
   unifiedCleanup = null

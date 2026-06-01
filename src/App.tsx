@@ -22,6 +22,7 @@ import { useAI } from './contexts/AIContext'
 import { AIWizard } from './components/AIWizard'
 import { AIPanel } from './components/AIPanel'
 import { InlineWizard, type InlineWizardResult } from './components/InlineWizard'
+import { GuideNarration } from './components/GuideNarration'
 
 
 // Converte nome de nota para número (C=0, F=5, etc.)
@@ -60,8 +61,11 @@ export default function App() {
 
   const { updateSession, badges } = useAI()
 
-  // Controla se o inline wizard de entrada já foi concluído
+  // Controla o fluxo de entrada: wizard → guia passo a passo → studio completo
   const [inlineWizardDone, setInlineWizardDone] = useState(false)
+  const [guideStep, setGuideStep] = useState(0)   // 0-3: etapas do guia
+  const [guideDone, setGuideDone] = useState(false) // true: studio completo
+  const [wizardResult, setWizardResult] = useState<InlineWizardResult | null>(null)
 
   // Sincroniza estado do App com o AIContext para que a IA sempre tenha o snapshot atual
   useEffect(() => {
@@ -77,7 +81,7 @@ export default function App() {
   }, [])
 
   const handleInlineWizardComplete = useCallback((result: InlineWizardResult) => {
-    // Aplica a sugestão da IA na interface
+    // Aplica a sugestão da IA no estado do App
     setText(result.chords.join(' '))
     if (GENRES[result.style]) {
       setGenreName(result.style)
@@ -85,7 +89,14 @@ export default function App() {
     }
     setBpmOverride(result.bpm)
     if (STYLE_MOOD[result.style]) setAutoMoods(STYLE_MOOD[result.style])
+    setWizardResult(result)
+    setGuideStep(0)
     setInlineWizardDone(true)
+  }, [])
+
+  const handleGuideNext = useCallback(() => {
+    setGuideStep(s => s + 1)
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50)
   }, [])
 
   const { chords: parsedChords, bad } = useMemo(() => parseProg(text), [text])
@@ -127,14 +138,62 @@ export default function App() {
     setSelectedSkeletonId(project.selectedSkeletonId)
   }
 
-  // Inline wizard como tela de entrada — substitui as seções quando não concluído
+  // Tela de entrada: wizard inline
   if (!inlineWizardDone) {
     return (
       <div className="max-w-[1440px] mx-auto px-8" style={{ background: 'var(--color-bg)' }}>
         <InlineWizard
           onComplete={handleInlineWizardComplete}
-          onSkip={() => setInlineWizardDone(true)}
+          onSkip={() => { setInlineWizardDone(true); setGuideDone(true) }}
         />
+        <AIWizard />
+        <AIPanel onApply={handleAIApply} />
+      </div>
+    )
+  }
+
+  // Fluxo guiado pós-wizard (4 passos progressivos)
+  if (!guideDone && wizardResult) {
+    return (
+      <div className="max-w-[1440px] mx-auto px-8 py-10 pb-20" style={{ background: 'var(--color-bg)' }}>
+        <GuideNarration
+          step={guideStep}
+          result={wizardResult}
+          onNext={handleGuideNext}
+          onDone={() => setGuideDone(true)}
+        />
+
+        {/* Passo 2+: Campo Harmônico */}
+        {guideStep >= 2 && (
+          <section className="mb-10">
+            <HarmonicField
+              ext={ext}
+              onExtChange={setExtOverride}
+              tonicOverride={autoTonic}
+              moodOverride={autoMoods}
+              badges={badges}
+              onChordClick={chord => {
+                const current = text.trim()
+                setText(current ? `${current} ${chord.tok}` : chord.tok)
+              }}
+            />
+          </section>
+        )}
+
+        {/* Passo 3+: Remix Preview */}
+        {guideStep >= 3 && parsedChords.length > 0 && (
+          <section className="mb-10">
+            <UnifiedPlayer
+              pianoEvents={pe}
+              bassEvents={be}
+              bpm={bpm}
+              genre={genre}
+              genreName={genreName}
+              chords={parsedChords}
+            />
+          </section>
+        )}
+
         <AIWizard />
         <AIPanel onApply={handleAIApply} />
       </div>
