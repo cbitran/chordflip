@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { parseProg } from './core/parser'
 import { reVoice, nameChord } from './core/reharmonizer'
@@ -18,6 +18,9 @@ import { SongSearch, type SongAnalysis } from './components/SongSearch'
 import { UnifiedPlayer } from './components/UnifiedPlayer'
 import type { Extension, ViradasMode, ReharmChord } from './types'
 import type { SavedProject } from './lib/projects'
+import { useAI } from './contexts/AIContext'
+import { AIWizard } from './components/AIWizard'
+import { AIPanel } from './components/AIPanel'
 
 
 // Converte nome de nota para número (C=0, F=5, etc.)
@@ -53,6 +56,21 @@ export default function App() {
   const genre = GENRES[genreName]!
   const ext = extOverride ?? genre.ext
   const bpm = bpmOverride ?? genre.bpm
+
+  const { updateSession, badges } = useAI()
+
+  // Sincroniza estado do App com o AIContext para que a IA sempre tenha o snapshot atual
+  useEffect(() => {
+    updateSession({
+      style: genreName,
+      bpm,
+      tonicNum: autoTonic,
+    })
+  }, [genreName, bpm, autoTonic])
+
+  const handleAIApply = useCallback((suggestedChords: string[]) => {
+    setText(suggestedChords.join(' '))
+  }, [])
 
   const { chords: parsedChords, bad } = useMemo(() => parseProg(text), [text])
 
@@ -189,6 +207,7 @@ export default function App() {
           onExtChange={setExtOverride}
           tonicOverride={autoTonic}
           moodOverride={autoMoods}
+          badges={badges}
           onChordClick={chord => {
             const current = text.trim()
             setText(current ? `${current} ${chord.tok}` : chord.tok)
@@ -283,6 +302,9 @@ export default function App() {
         />
         <InstrumentGuide genreName={genreName} inst={genre.inst} />
       </section>
+
+      <AIWizard />
+      <AIPanel onApply={handleAIApply} />
 
     </div>
   )
