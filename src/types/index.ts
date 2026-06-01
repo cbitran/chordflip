@@ -66,3 +66,42 @@ export interface ProgressionVariant {
 
 export type Timbre = 'pad' | 'pluck' | 'lead' | 'piano'
 export type TrackId = 'kick' | 'chords' | 'bass'
+
+// --- AI Coach ---
+
+export interface AISession {
+  song: { artist: string; title: string } | null
+  style: string
+  bpm: number
+  feeling: string[]
+  chords: string[]
+  tonicNum: number | null
+}
+
+export type AIStatus = 'idle' | 'loading' | 'active' | 'dismissed'
+
+export interface AISuggestion {
+  chords: string[]
+  explanation: string
+}
+
+export type BadgeLevel = 'good' | 'ok' | 'bad'
+
+export interface ChordBadgeData {
+  chord: string
+  level: BadgeLevel
+  explanation: string
+}
+
+export interface AIContextValue {
+  status: AIStatus
+  session: AISession
+  suggestion: AISuggestion | null
+  badges: Record<string, ChordBadgeData>
+  wizardOpen: boolean
+  panelOpen: boolean
+  updateSession: (patch: Partial<AISession>) => void
+  callAI: () => void
+  acceptSuggestion: (onApply: (chords: string[]) => void) => void
+  dismissAI: () => void
+}
