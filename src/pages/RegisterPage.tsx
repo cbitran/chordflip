@@ -52,7 +52,7 @@ export function RegisterPage() {
           <div className="card p-8 text-center">
             <div className="text-4xl mb-4">✉️</div>
             <div className="font-mono text-[10px] uppercase tracking-[3px] mb-2" style={{ color: 'var(--color-muted)' }}>
-              Reharm Studio
+              ChordFlip
             </div>
             <h1 className="font-sans text-2xl font-bold mb-3" style={{ color: 'var(--color-ink)' }}>
               Conta criada!
@@ -79,7 +79,7 @@ export function RegisterPage() {
         <div className="card p-8">
           <div className="text-center mb-8">
             <div className="font-mono text-[10px] uppercase tracking-[3px] mb-2" style={{ color: 'var(--color-muted)' }}>
-              Reharm Studio
+              ChordFlip
             </div>
             <h1 className="font-sans text-2xl font-bold" style={{ color: 'var(--color-ink)' }}>
               {t('auth.registerTitle')}

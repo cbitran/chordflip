@@ -8,7 +8,7 @@ export default {
   },
   hero: {
     kicker: 'Chords → MIDI by Style',
-    title: 'Reharm Studio',
+    title: 'ChordFlip',
     subtitle: 'Paste your chords, choose the style and groove, and download MIDI ready for your DAW.',
   },
   sections: {

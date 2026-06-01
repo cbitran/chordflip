@@ -67,7 +67,7 @@ export function ResetPasswordPage() {
         <div className="card p-8">
           <div className="text-center mb-8">
             <div className="font-mono text-[10px] uppercase tracking-[3px] mb-2" style={{ color: 'var(--color-muted)' }}>
-              Reharm Studio
+              ChordFlip
             </div>
             <h1 className="font-sans text-2xl font-bold" style={{ color: 'var(--color-ink)' }}>
               {t('auth.resetTitle')}

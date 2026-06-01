@@ -19,7 +19,7 @@ i18n
     detection: {
       order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
-      lookupLocalStorage: 'reharm-lang',
+      lookupLocalStorage: 'chordflip-lang',
     },
   })
 

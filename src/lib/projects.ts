@@ -13,7 +13,7 @@ export interface SavedProject {
   selectedSkeletonId: string | null
 }
 
-const KEY = 'reharm-projects'
+const KEY = 'chordflip-projects'
 
 export function loadProjects(): SavedProject[] {
   try {

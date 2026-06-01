@@ -77,11 +77,8 @@ export function Navbar() {
     >
       {/* Logo */}
       <Link to="/" className="flex items-center gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[3px]" style={{ color: 'var(--color-muted)' }}>
-          Studio
-        </span>
         <span className="font-sans text-lg font-bold" style={{ color: 'var(--color-ink)' }}>
-          Reharm
+          ChordFlip
         </span>
       </Link>
 

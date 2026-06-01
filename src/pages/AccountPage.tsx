@@ -211,7 +211,7 @@ export function AccountPage() {
           <p className="text-sm max-w-sm mx-auto leading-relaxed" style={{ color: 'var(--color-muted)' }}>
             {user.plan === 'free'
               ? 'Acesse todos os recursos básicos sem custo. Faça upgrade para Pro e desbloqueie exports ilimitados, projetos na nuvem e suporte prioritário.'
-              : 'Você tem acesso completo ao Reharm Studio Pro.'}
+              : 'Você tem acesso completo ao ChordFlip Pro.'}
           </p>
           {user.plan === 'free' && (
             <button className="btn-primary px-8 py-3 text-sm font-semibold rounded-xl mx-auto block">

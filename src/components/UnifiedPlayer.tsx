@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TrackRow } from './TrackRow'
 import { genKickEvents, kickStepsForGrid } from '../core/kick-pattern'
-import { playUnified, stopUnified, getUnifiedProgress } from '../audio/player'
+import { playUnified, stopUnified } from '../audio/player'
 import type { MidiEvent, ParsedChord, GenreDefinition, Timbre, TrackId } from '../types'
 import { TPQ } from '../core/groove'
 
@@ -67,6 +67,10 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
   // Ref para evitar double-play: React state é async, ref é síncrono
   const playingRef = useRef(false)
 
+  // Tracking local de progresso — evita dependência de timing entre React e player.ts
+  const playStartRef = useRef<number | null>(null)
+  const totalMsRef = useRef(0)
+
   // Detecta mudança de eventos (extensão, gênero, acordes) — para o player e sinaliza atualização
   const prevPianoRef = useRef(pianoEvents)
   const prevBassRef  = useRef(bassEvents)
@@ -78,6 +82,7 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
     if (playingRef.current) {
       stopUnified()
       playingRef.current = false
+      playStartRef.current = null
       setPlaying(false)
     }
     setHasUpdates(true)
@@ -86,13 +91,24 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
   const stateRef = useRef({ muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm })
   stateRef.current = { muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm }
 
-  // rAF para atualizar o playhead
+  // Computa duração total dos eventos (mesma lógica do player.ts)
+  const totalMs = useMemo(() => {
+    const allEvents = [...kickEvents, ...pianoEvents, ...bassEvents]
+    if (!allEvents.length) return 0
+    const lastTick = allEvents.reduce((max, e) => Math.max(max, e.tick + e.duration), 0)
+    return lastTick * (60 / bpm / TPQ) * 1000
+  }, [kickEvents, pianoEvents, bassEvents, bpm])
+  totalMsRef.current = totalMs
+
+  // rAF para atualizar o playhead — usa tracking local em vez de getUnifiedProgress()
   useEffect(() => {
     if (!playing) { setProgress(0); return }
     let id: number
     const tick = () => {
-      const p = getUnifiedProgress()
-      if (p !== null) setProgress(p)
+      if (playStartRef.current !== null && totalMsRef.current > 0) {
+        const elapsed = performance.now() - playStartRef.current
+        setProgress(Math.min(Math.max(elapsed / totalMsRef.current, 0), 1))
+      }
       id = requestAnimationFrame(tick)
     }
     id = requestAnimationFrame(tick)
@@ -104,9 +120,14 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
     if (!ended) return
     setEnded(false)
     if (loopRef.current) {
-      doPlay()
+      doPlay().catch(() => {
+        playingRef.current = false
+        playStartRef.current = null
+        setPlaying(false)
+      })
     } else {
       playingRef.current = false
+      playStartRef.current = null
       setPlaying(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,6 +135,7 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
 
   const doPlay = async () => {
     const s = stateRef.current
+    playStartRef.current = performance.now() + 100
     await playUnified({
       kickEvents: s.kickEvents,
       pianoEvents: s.pianoEvents,
@@ -143,6 +165,7 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
     if (playingRef.current) {
       stopUnified()
       playingRef.current = false
+      playStartRef.current = null
       setPlaying(false)
       return
     }
@@ -150,7 +173,13 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
     setHasUpdates(false)
     playingRef.current = true
     setPlaying(true)
-    await doPlay()
+    try {
+      await doPlay()
+    } catch {
+      playingRef.current = false
+      playStartRef.current = null
+      setPlaying(false)
+    }
   }
 
   if (!chords.length) return null

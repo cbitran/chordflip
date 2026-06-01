@@ -87,7 +87,12 @@ let unifiedDurationMs: number | null = null
 
 export function getUnifiedProgress(): number | null {
   if (unifiedStartMs === null || unifiedDurationMs === null) return null
-  return Math.min((performance.now() - unifiedStartMs) / unifiedDurationMs, 1)
+  const raw = (performance.now() - unifiedStartMs) / unifiedDurationMs
+  return Math.min(Math.max(raw, 0), 1)
+}
+
+export function getUnifiedDurationMs(): number | null {
+  return unifiedDurationMs
 }
 
 export interface UnifiedPlayOptions {
