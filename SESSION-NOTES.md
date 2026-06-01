@@ -137,13 +137,36 @@ Todo esse código vai para os módulos core do projeto React.
 
 ---
 
-## Próximos Passos
+## Status do MVP (01/06/2026)
 
-1. **Sessão de Design** — interface moderna, refinada, profissional (próxima sessão)
-2. **Scaffolding** — criar projeto React/Vite/TS, portar módulos core do HTML
-3. **Backend** — Node.js + Claude API + pesquisa web
-4. **Biblioteca de progressões** — esqueletos curados por Bitran + enriquecimento automático
-5. **Deploy MVP** — Vercel + Railway
+| Feature | Status |
+|---|---|
+| React + Vite + TypeScript | ✅ |
+| Parser de acordes | ✅ |
+| Reharmonizador (9ª, 11ª) | ✅ |
+| Groove engine (swing + viradas) | ✅ |
+| MIDI writer (piano/bass/full) | ✅ |
+| Preview Tone.js | ✅ |
+| 8 gêneros | ✅ |
+| Galeria de 12 progressões curadas | ✅ |
+| Grid visual 16-step | ✅ |
+| Layout sidebar + dois temas (light/dark) | ✅ |
+| Salvar/carregar projetos (localStorage) | ✅ |
+| BPM spinner customizado | ✅ |
+| Plus Jakarta Sans (sem serifadas) | ✅ |
+| Centralizado 1440px | ✅ |
+
+## Backlog — Fase 2
+
+- **Grid harmônico interativo** — clicar num compasso troca o grau da escala; sistema atualiza automaticamente os outros compassos; arrastar blocos muda o ritmo. Base (`scale.ts`) já criada.
+- **Construtor de progressões guiado** — paleta de graus diatônicos, usuário monta a progressão clicando; sistema orienta o próximo passo com base no movimento harmônico
+- **Backend + Claude API** — digitar nome da música → sistema detecta tonalidade, acordes, estrutura
+- **Estrutura por seções** — verso/refrão/bridge com campos independentes
+- **Mais esqueletos de progressão** — curados pelo Bitran, especialmente House gospel e afro
+
+## Deploy
+- Frontend: Vercel (quando pronto)
+- Backend: Railway (fase 2)
 
 ---
 
