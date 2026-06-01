@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TrackRow } from './TrackRow'
 import { genKickEvents, kickStepsForGrid } from '../core/kick-pattern'
@@ -40,6 +40,7 @@ function eventsToSteps(events: MidiEvent[], bar: number): number[] {
 export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords }: Props) {
   const { t } = useTranslation()
   const [playing, setPlaying] = useState(false)
+  const [loop, setLoop] = useState(false)
   const [muted, setMuted] = useState<Set<TrackId>>(new Set())
   const [solo, setSolo] = useState<TrackId | null>(null)
   const [timbre, setTimbre] = useState<Timbre>('piano')
@@ -55,6 +56,36 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
   const kickSteps = useMemo(() => kickStepsForGrid(genreName), [genreName])
   const chordsSteps = useMemo(() => eventsToSteps(pianoEvents, 0), [pianoEvents])
   const bassSteps = useMemo(() => eventsToSteps(bassEvents, 0), [bassEvents])
+
+  // Refs para capturar sempre o estado mais recente dentro de onEnd
+  const loopRef = useRef(loop)
+  loopRef.current = loop
+
+  const stateRef = useRef({ muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm })
+  stateRef.current = { muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm }
+
+  // runPlaybackRef: função estável que onEnd pode chamar recursivamente
+  const runPlaybackRef = useRef<() => Promise<void>>()
+  runPlaybackRef.current = async () => {
+    const s = stateRef.current
+    await playUnified({
+      kickEvents: s.kickEvents,
+      pianoEvents: s.pianoEvents,
+      bassEvents: s.bassEvents,
+      bpm: s.bpm,
+      tpq: TPQ,
+      muted: s.muted,
+      solo: s.solo,
+      timbre: s.timbre,
+      onEnd: () => {
+        if (loopRef.current) {
+          runPlaybackRef.current?.()
+        } else {
+          setPlaying(false)
+        }
+      },
+    })
+  }
 
   const toggleMute = (id: TrackId) => {
     setMuted(prev => {
@@ -76,17 +107,7 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
     }
     if (!pianoEvents.length && !bassEvents.length) return
     setPlaying(true)
-    await playUnified({
-      kickEvents,
-      pianoEvents,
-      bassEvents,
-      bpm,
-      tpq: TPQ,
-      muted,
-      solo,
-      timbre,
-      onEnd: () => setPlaying(false),
-    })
+    await runPlaybackRef.current!()
   }
 
   if (!chords.length) return null
@@ -100,6 +121,21 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
         >
           {playing ? '■' : '▶'} {playing ? 'Stop' : 'Play'}
         </button>
+
+        {/* Loop toggle */}
+        <button
+          onClick={() => setLoop(v => !v)}
+          className="font-mono text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all"
+          style={{
+            background: loop ? 'rgba(138,180,240,0.15)' : 'var(--color-border)',
+            color: loop ? '#8ab4f0' : 'var(--color-muted)',
+            border: loop ? '1px solid #8ab4f0' : '1px solid transparent',
+          }}
+          title="Loop"
+        >
+          ⟳ Loop
+        </button>
+
         <span className="font-mono text-xs" style={{ color: 'var(--color-muted)' }}>
           {bpm} BPM · {numBars} {numBars === 1 ? 'compasso' : 'compassos'}
         </span>
