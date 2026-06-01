@@ -46,6 +46,7 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
   const [muted, setMuted] = useState<Set<TrackId>>(new Set())
   const [solo, setSolo] = useState<TrackId | null>(null)
   const [timbre, setTimbre] = useState<Timbre>('piano')
+  const [hasUpdates, setHasUpdates] = useState(false)
 
   const numBars = Math.max(chords.length, 1)
   const slug = genreName.toLowerCase().replace(/\s+/g, '')
@@ -65,6 +66,22 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
 
   // Ref para evitar double-play: React state é async, ref é síncrono
   const playingRef = useRef(false)
+
+  // Detecta mudança de eventos (extensão, gênero, acordes) — para o player e sinaliza atualização
+  const prevPianoRef = useRef(pianoEvents)
+  const prevBassRef  = useRef(bassEvents)
+  useEffect(() => {
+    const changed = prevPianoRef.current !== pianoEvents || prevBassRef.current !== bassEvents
+    prevPianoRef.current = pianoEvents
+    prevBassRef.current  = bassEvents
+    if (!changed) return
+    if (playingRef.current) {
+      stopUnified()
+      playingRef.current = false
+      setPlaying(false)
+    }
+    setHasUpdates(true)
+  }, [pianoEvents, bassEvents])
 
   const stateRef = useRef({ muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm })
   stateRef.current = { muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm }
@@ -130,6 +147,7 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
       return
     }
     if (!pianoEvents.length && !bassEvents.length) return
+    setHasUpdates(false)
     playingRef.current = true
     setPlaying(true)
     await doPlay()
@@ -139,13 +157,29 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords 
 
   return (
     <div className="card p-6 space-y-4">
+      {/* Título */}
+      <div className="flex items-baseline gap-2 mb-1">
+        <span className="font-mono text-[10px] uppercase tracking-[3px]" style={{ color: 'var(--color-muted)' }}>05.5</span>
+        <span className="font-sans font-bold text-lg" style={{ color: 'var(--color-ink)' }}>Remix Preview</span>
+      </div>
+
       <div className="flex items-center gap-3">
         <button
           onClick={handlePlay}
-          className="btn-primary px-5 py-2 text-sm font-semibold rounded-xl flex items-center gap-2"
+          className="btn-primary px-5 py-2 text-sm font-semibold rounded-xl flex items-center gap-2 transition-all"
+          style={hasUpdates && !playing ? { boxShadow: `0 0 0 2px var(--color-primary), var(--shadow-btn)` } : {}}
+          title={hasUpdates && !playing ? 'Progressão atualizada — clique para ouvir' : undefined}
         >
-          {playing ? '■' : '▶'} {playing ? 'Stop' : 'Play'}
+          {playing ? '■' : hasUpdates ? '↻' : '▶'}
+          {' '}
+          {playing ? 'Stop' : 'Play'}
         </button>
+
+        {hasUpdates && !playing && (
+          <span className="text-xs animate-pulse" style={{ color: 'var(--color-primary)' }}>
+            Progressão atualizada
+          </span>
+        )}
 
         {/* Loop toggle */}
         <button
