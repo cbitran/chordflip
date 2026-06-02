@@ -1,3 +1,4 @@
+import { zipSync } from 'fflate'
 import { trackBytes, midiFile, downloadMidi } from '../core/midi-writer'
 import { genEvents } from '../core/groove'
 import type { ParsedChord, Extension, ViradasMode, GenreDefinition } from '../types'
@@ -12,13 +13,14 @@ interface Props {
   swing: number
   viradas: ViradasMode
   sectionName: string
+  songName?: string
   playing: boolean
   onPlay: () => void
 }
 
 export function ExportButtons({
   chords, ext, genre, genreName, bpm, swing, viradas,
-  sectionName, playing, onPlay,
+  sectionName, songName, playing, onPlay,
 }: Props) {
   if (!chords.length) return (
     <div className="card p-6">
@@ -28,20 +30,37 @@ export function ExportButtons({
     </div>
   )
 
-  const slug = `${sectionName.toLowerCase().replace(/\s+/g, '-')}-${genreName.toLowerCase().replace(/\s+/g, '')}`
+  const base = songName
+    ? `${songName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${genreName.toLowerCase().replace(/\s+/g, '')}`
+    : `${sectionName.toLowerCase().replace(/\s+/g, '-')}-${genreName.toLowerCase().replace(/\s+/g, '')}`
+
+  function buildMidis() {
+    const { pe, be } = genEvents(chords, ext, genre, swing / 100, viradas)
+    return {
+      full: midiFile([trackBytes([], bpm, 'Tempo'), trackBytes(pe, null, 'Piano'), trackBytes(be, null, 'Bass')]),
+      piano: midiFile([trackBytes(pe, bpm, 'Piano')]),
+      bass: midiFile([trackBytes(be, bpm, 'Bass')]),
+    }
+  }
 
   function doDownload(which: 'full' | 'piano' | 'bass') {
-    const { pe, be } = genEvents(chords, ext, genre, swing / 100, viradas)
-    if (which === 'full') {
-      downloadMidi(
-        midiFile([trackBytes([], bpm, 'Tempo'), trackBytes(pe, null, 'Piano'), trackBytes(be, null, 'Bass')]),
-        `${slug}-full.mid`,
-      )
-    } else if (which === 'piano') {
-      downloadMidi(midiFile([trackBytes(pe, bpm, 'Piano')]), `${slug}-piano.mid`)
-    } else {
-      downloadMidi(midiFile([trackBytes(be, bpm, 'Bass')]), `${slug}-bass.mid`)
-    }
+    const midis = buildMidis()
+    downloadMidi(midis[which], `${base}-${which}.mid`)
+  }
+
+  function doDownloadAll() {
+    const midis = buildMidis()
+    const zipped = zipSync({
+      [`${base}-full.mid`]: midis.full,
+      [`${base}-piano.mid`]: midis.piano,
+      [`${base}-bass.mid`]: midis.bass,
+    })
+    const url = URL.createObjectURL(new Blob([zipped], { type: 'application/zip' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${base}-midi.zip`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -56,9 +75,17 @@ export function ExportButtons({
         </button>
 
         <button
-          onClick={() => doDownload('full')}
+          onClick={doDownloadAll}
           className="btn-neumorphic px-5 py-3 font-mono text-xs rounded-xl flex items-center gap-2"
           style={{ color: 'var(--color-primary)' }}
+        >
+          ⬇ Baixar todos (.zip)
+        </button>
+
+        <button
+          onClick={() => doDownload('full')}
+          className="btn-neumorphic px-5 py-3 font-mono text-xs rounded-xl"
+          style={{ color: 'var(--color-muted)' }}
         >
           ⬇ MIDI completo
         </button>

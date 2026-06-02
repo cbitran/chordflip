@@ -418,6 +418,7 @@ export default function App() {
           swing={swing}
           viradas={viradas}
           sectionName="remix"
+          songName={aiSession.song ? `${aiSession.song.title} ${aiSession.song.artist}` : undefined}
           playing={playing}
           onPlay={handlePlay}
         />
