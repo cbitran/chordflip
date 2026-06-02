@@ -199,20 +199,74 @@ export function SidebarPage({ onAdvanced }: Props) {
           overflow: 'hidden',
         }}
       >
-        {/* Toggle recolher/expandir */}
-        <button
-          onClick={() => setCollapsed(v => !v)}
-          title={collapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
-          className="absolute top-4 right-3 z-10 w-6 h-6 flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
-          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-muted)', fontSize: '10px' }}
-        >
-          {collapsed ? '›' : '‹'}
-        </button>
+        {/* ── Mini strip — visível quando recolhido ── */}
+        {collapsed && (
+          <div className="flex flex-col items-center gap-3 py-4 flex-1">
+            {/* Toggle expandir — centralizado */}
+            <button
+              onClick={() => setCollapsed(false)}
+              title="Expandir sidebar"
+              className="w-6 h-6 flex items-center justify-center rounded-full hover:opacity-80 transition-opacity"
+              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-muted)', fontSize: '10px' }}
+            >›</button>
 
-        {/* Conteúdo da sidebar */}
+            {/* Ícone de busca */}
+            <button
+              onClick={() => setCollapsed(false)}
+              title="Nova busca"
+              className="w-7 h-7 flex items-center justify-center rounded-full hover:opacity-80 transition-opacity"
+              style={{ color: 'var(--color-muted)', fontSize: '13px' }}
+            >🔍</button>
+
+            {/* Capa do disco */}
+            {song?.cover && (
+              <img src={song.cover} alt="" className="w-7 h-7 rounded-md object-cover" title={song.title} />
+            )}
+
+            {/* Nota principal */}
+            {analysis && (
+              <span className="font-mono text-[10px] font-bold" style={{ color: 'var(--color-primary)' }}
+                title={`${analysis.key} ${analysis.mode}`}>
+                {analysis.key}
+              </span>
+            )}
+
+            {/* Feeling abreviado — primeira letra de cada chip */}
+            {feeling.length > 0 && (
+              <div className="flex flex-col items-center gap-0.5">
+                {feeling.map(f => (
+                  <span key={f} className="font-mono text-[9px] font-semibold"
+                    style={{ color: 'var(--color-primary)', opacity: 0.7 }} title={f}>
+                    {f[0]}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* BPM abreviado */}
+            {analysis && (
+              <span className="font-mono text-[9px]" style={{ color: 'var(--color-muted)' }}
+                title={`${bpmValue} BPM`}>
+                {bpmValue}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Toggle recolher — visível apenas quando expandido */}
+        {!collapsed && (
+          <button
+            onClick={() => setCollapsed(true)}
+            title="Recolher sidebar"
+            className="absolute top-4 right-3 z-10 w-6 h-6 flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
+            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-muted)', fontSize: '10px' }}
+          >‹</button>
+        )}
+
+        {/* Conteúdo da sidebar — oculto quando recolhido */}
         <div
           className="flex flex-col flex-1 overflow-y-auto px-5 py-7"
-          style={{ opacity: collapsed ? 0 : 1, transition: 'opacity 0.2s ease', pointerEvents: collapsed ? 'none' : 'auto', minWidth: '280px' }}
+          style={{ display: collapsed ? 'none' : 'flex', minWidth: '280px' }}
         >
           {/* Tagline */}
           <p className="font-mono text-xs mb-5 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
