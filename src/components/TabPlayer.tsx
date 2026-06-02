@@ -35,7 +35,6 @@ export const TabPlayer = forwardRef<TabPlayerHandle, Props>(function TabPlayer(
   ])
   const [activeTabId, setActiveTabId] = useState('tab-1')
 
-  // Sincroniza tab-1 quando o ChordInput muda
   useEffect(() => {
     setTabs(prev =>
       prev.map(t =>
@@ -47,9 +46,18 @@ export const TabPlayer = forwardRef<TabPlayerHandle, Props>(function TabPlayer(
   }, [initialChords])
 
   const activeTab = tabs.find(t => t.id === activeTabId) ?? tabs[0]!
+
+  // Usa o groove da aba se disponível, caso contrário usa os parâmetros do App
+  const g = activeTab.groove
+  const effectiveGenre: GenreDefinition = g
+    ? { ...genre, pianoSteps: g.pianoSteps, pianoDur: g.pianoDur, bassSteps: g.bassSteps, bassDur: g.bassDur }
+    : genre
+  const effectiveSwing = g?.swing ?? swing
+  const effectiveViradas: ViradasMode = g?.viradas ?? viradas
+
   const activeChordText = activeTab.chords.join(' ')
   const { chords: parsedChords } = parseProg(activeChordText)
-  const { pe, be } = genEvents(parsedChords, ext, genre, swing / 100, viradas)
+  const { pe, be } = genEvents(parsedChords, ext, effectiveGenre, effectiveSwing / 100, effectiveViradas)
 
   const loadTab = useCallback(
     (progression: SuggestedProgression) => {
@@ -59,6 +67,7 @@ export const TabPlayer = forwardRef<TabPlayerHandle, Props>(function TabPlayer(
         label: progression.name.slice(0, 14),
         chords: progression.chords,
         progressionName: progression.name,
+        groove: progression.groove,
       }
       setTabs(prev => {
         if (prev.length >= MAX_TABS) {
@@ -104,6 +113,11 @@ export const TabPlayer = forwardRef<TabPlayerHandle, Props>(function TabPlayer(
                 }}
               >
                 {i + 1}. {tab.label}
+                {tab.groove && (
+                  <span className="ml-1.5 opacity-60" style={{ fontSize: 9 }}>
+                    ♩{tab.groove.swing}
+                  </span>
+                )}
               </button>
               {i > 0 && (
                 <button
@@ -124,7 +138,7 @@ export const TabPlayer = forwardRef<TabPlayerHandle, Props>(function TabPlayer(
         pianoEvents={pe}
         bassEvents={be}
         bpm={bpm}
-        genre={genre}
+        genre={effectiveGenre}
         genreName={genreName}
         chords={parsedChords}
         ext={ext}
