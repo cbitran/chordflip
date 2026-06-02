@@ -44,6 +44,7 @@ export function SidebarPage({ onAdvanced }: Props) {
 
   // --- Generated result (populado após "Gerar remix") ---
   const [result, setResult] = useState<SimpleWizardResult | null>(null)
+  const [collapsed, setCollapsed] = useState(false)
 
   // --- Playback state (área de conteúdo) ---
   const [activeExt, setActiveExt] = useState<Extension | null>(null)
@@ -212,14 +213,42 @@ export function SidebarPage({ onAdvanced }: Props) {
 
       {/* ── SIDEBAR ── */}
       <aside
-        className="shrink-0 flex flex-col overflow-y-auto px-5 py-7"
+        className="shrink-0 flex flex-col relative"
         style={{
-          width: result ? '288px' : '480px',
-          transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          width: collapsed ? '40px' : (result ? '288px' : '480px'),
+          transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
           borderRight: '1px solid var(--color-border)',
           background: 'var(--color-card)',
+          overflow: 'hidden',
         }}
       >
+        {/* Botão de recolher/expandir */}
+        <button
+          onClick={() => setCollapsed(v => !v)}
+          title={collapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
+          className="absolute top-4 right-3 z-10 w-6 h-6 flex items-center justify-center rounded-full transition-opacity hover:opacity-80"
+          style={{
+            background: 'var(--color-bg)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-muted)',
+            fontSize: '10px',
+            flexShrink: 0,
+          }}
+        >
+          {collapsed ? '›' : '‹'}
+        </button>
+
+        {/* Conteúdo — oculto quando recolhido */}
+        <div
+          className="flex flex-col flex-1 overflow-y-auto px-5 py-7"
+          style={{
+            opacity: collapsed ? 0 : 1,
+            transition: 'opacity 0.2s ease',
+            pointerEvents: collapsed ? 'none' : 'auto',
+            minWidth: '280px',
+          }}
+        >
+
         {/* Tagline */}
         <p className="font-mono text-xs mb-5 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
           Busque uma música, escolha o estilo e gere acordes ricos para o seu remix.
@@ -369,6 +398,8 @@ export function SidebarPage({ onAdvanced }: Props) {
             → Modo avançado
           </button>
         </div>
+
+        </div>{/* fim conteúdo sidebar */}
       </aside>
 
       {/* ── CONTEÚDO ── */}
