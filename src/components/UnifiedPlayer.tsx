@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TrackRow } from './TrackRow'
 import { genKickEvents, kickStepsForGrid } from '../core/kick-pattern'
-import { playUnified, stopUnified, initAudio, getTransportSeconds, getLoopDuration } from '../audio/player'
+import { playUnified, stopUnified, initAudio, getTransportSeconds, getLoopDuration, setUnifiedMix } from '../audio/player'
 import { reVoice } from '../core/reharmonizer'
 import type { MidiEvent, ParsedChord, GenreDefinition, Timbre, TrackId, Extension } from '../types'
 import { TPQ } from '../core/groove'
@@ -93,6 +93,11 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords,
   const stateRef = useRef({ muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm })
   stateRef.current = { muted, solo, timbre, kickEvents, pianoEvents, bassEvents, bpm }
 
+  // Propaga mudanças de mute/solo para os synths ativos sem reiniciar o playback
+  useEffect(() => {
+    if (playing) setUnifiedMix(muted, solo)
+  }, [muted, solo, playing])
+
   // rAF para playhead — usa Tone.Transport.seconds (fonte de verdade atômica)
   // Em modo loop, Transport.seconds reinicia em loopStart, então o progresso
   // já é natural — sem precisar de módulo manual.
@@ -155,6 +160,7 @@ export function UnifiedPlayer({ pianoEvents, bassEvents, bpm, genreName, chords,
       bassEvents: s.bassEvents,
       bpm: s.bpm,
       tpq: TPQ,
+      numBars,
       muted: s.muted,
       solo: s.solo,
       timbre: s.timbre,
