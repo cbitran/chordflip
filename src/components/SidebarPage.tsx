@@ -220,6 +220,11 @@ export function SidebarPage({ onAdvanced }: Props) {
           background: 'var(--color-card)',
         }}
       >
+        {/* Tagline */}
+        <p className="font-mono text-xs mb-5 leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+          Busque uma música, escolha o estilo e gere acordes ricos para o seu remix.
+        </p>
+
         {/* Busca */}
         <SongSearch
           onAnalysis={handleAnalysis}
