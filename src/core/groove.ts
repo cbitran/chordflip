@@ -16,6 +16,25 @@ function voicedNotes(chord: ParsedChord, ext: Extension, base: number): number[]
   return reVoice(chord.intervals, ext).map(x => base + chord.root + x)
 }
 
+// Escolhe a oitava do acorde que minimiza o movimento total a partir das notas anteriores.
+// Testa deslocamentos de -12, 0 e +12 em relação à posição base.
+function voiceWithLeading(chord: ParsedChord, ext: Extension, base: number, prevNotes: number[]): number[] {
+  const intervals = reVoice(chord.intervals, ext)
+  const root = base + chord.root
+
+  if (prevNotes.length === 0) return intervals.map(x => root + x)
+
+  const score = (notes: number[]) => {
+    let s = 0
+    const len = Math.min(notes.length, prevNotes.length)
+    for (let i = 0; i < len; i++) s += Math.abs(notes[i]! - prevNotes[i]!)
+    return s
+  }
+
+  const candidates = [-12, 0, 12].map(shift => intervals.map(x => root + x + shift))
+  return candidates.reduce((best, cur) => score(cur) < score(best) ? cur : best)
+}
+
 function jitter(amount: number, enabled: boolean): number {
   if (!enabled) return 0
   return Math.round((Math.random() * 2 - 1) * amount)
@@ -33,6 +52,8 @@ export function genEvents(
   const n = chords.length
   const humanize = viradas === 'full'
 
+  let prevPianoNotes: number[] = []
+
   for (let i = 0; i < n; i++) {
     const base = i * BAR
     const cur = chords[i]!
@@ -46,13 +67,23 @@ export function genEvents(
     pSteps.forEach((step, k) => {
       const useNext = viradas !== 'off' && step === 14
       const ch = useNext ? nxt : cur
-      const notes = voicedNotes(ch, ext, genre.pianoBase)
+      const notes = voiceWithLeading(ch, ext, genre.pianoBase, prevPianoNotes)
+      if (!useNext) prevPianoNotes = notes
       const t = base + step * S16 + swingShift(step, swing) + jitter(6, humanize)
-      const vel = (k % 2 ? 86 : 96) + jitter(5, humanize)
+      const vel = (k % 2 ? 90 : 96) + jitter(5, humanize)
       notes.forEach(nt => pe.push({ tick: t, duration: genre.pianoDur, note: nt, velocity: Math.max(1, Math.min(127, vel)) }))
     })
 
-    // Virada final no último compasso
+    // Double-hit no final de cada compasso (step 15) quando viradas ativo
+    // Recria o "pickup" característico do piano house (ex: steps 14+15, 13+15)
+    if (viradas !== 'off') {
+      const ch = humanize && isLast ? cur : (Math.random() < 0.5 ? nxt : cur)
+      const notes = voiceWithLeading(ch, ext, genre.pianoBase, prevPianoNotes)
+      const t = base + 15 * S16 + swingShift(15, swing) + jitter(8, humanize)
+      notes.forEach(nt => pe.push({ tick: t, duration: genre.pianoDur, note: nt, velocity: 82 + jitter(4, humanize) }))
+    }
+
+    // Virada descendente no último compasso
     if (humanize && isLast) {
       [13, 15].forEach((step, j) => {
         const notes = voicedNotes(cur, ext, genre.pianoBase)
