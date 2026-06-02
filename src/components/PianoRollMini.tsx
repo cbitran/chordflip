@@ -1,7 +1,7 @@
 // src/components/PianoRollMini.tsx
 import type { MidiEvent } from '../types'
 
-const ROLL_H = 96       // altura total em px
+const ROLL_H = 128      // altura total em px
 const LABEL_W = 28      // largura da coluna de labels
 const BLACK_KEYS = new Set([1, 3, 6, 8, 10])  // semitones que são teclas pretas
 const CHROMATIC = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
@@ -132,7 +132,7 @@ export function PianoRollMini({ events, totalTicks, progress, color }: Props) {
               left: `${(e.tick / totalTicks) * 100}%`,
               width: `max(${(e.duration / totalTicks) * 100}%, 3px)`,
               top: noteY(e.note) + 1,
-              height: Math.max(rowH - 2, 2),
+              height: Math.max(rowH - 1, 3),
               background: color,
               borderRadius: 2,
               opacity: 0.85,
