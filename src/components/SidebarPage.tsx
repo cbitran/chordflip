@@ -42,7 +42,7 @@ export function SidebarPage({ onAdvanced }: Props) {
   const [analysis, setAnalysis] = useState<SongAnalysis | null>(null)
   const [song, setSong] = useState<SimpleWizardSong | null>(null)
   const [genreName, setGenreName] = useState('House')
-  const [feeling, setFeeling] = useState<string[]>([])
+  const [feeling] = useState<string[]>([])
   const [bpmValue, setBpmValue] = useState(120)
   const [result, setResult] = useState<SimpleWizardResult | null>(null)
   const [collapsed, setCollapsed] = useState(false)
@@ -175,9 +175,6 @@ export function SidebarPage({ onAdvanced }: Props) {
     color: sectionColorMap[m.name] ?? '#aaa',
     widthPct: ((fullSong.markers[i + 1]?.fraction ?? 1) - m.fraction) * 100,
   }))
-
-  const toggleFeeling = (f: string) =>
-    setFeeling(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f])
 
   const chip = (active: boolean) => ({
     color: active ? 'var(--color-bg)' : 'var(--color-ink)',
