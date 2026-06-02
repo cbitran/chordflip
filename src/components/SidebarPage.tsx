@@ -17,7 +17,6 @@ interface Props {
   onAdvanced: (result?: SimpleWizardResult) => void
 }
 
-const BPM_CHIPS = ['Auto', '80', '90', '100', '110', '120', '124', '128', '130']
 const FEELING_CHIPS = ['Groovy', 'Soulful', 'Dark', 'Tribal', 'Jazzy', 'Uplifting', 'Suspended']
 
 const EXT_CONFIGS: { ext: Extension; label: string; tagline: string; color: string }[] = [
@@ -45,7 +44,7 @@ export function SidebarPage({ onAdvanced }: Props) {
   const [song, setSong] = useState<SimpleWizardSong | null>(null)
   const [genreName, setGenreName] = useState('House')
   const [feeling, setFeeling] = useState<string[]>([])
-  const [bpmOpt, setBpmOpt] = useState('Auto')
+  const [bpmValue, setBpmValue] = useState(120)
 
   // --- Generated result (populado após "Gerar remix") ---
   const [result, setResult] = useState<SimpleWizardResult | null>(null)
@@ -65,15 +64,12 @@ export function SidebarPage({ onAdvanced }: Props) {
     if (a.remix_guide?.style && GENRES[a.remix_guide.style]) {
       setGenreName(a.remix_guide.style)
     }
+    if (a.remix_guide?.bpm) setBpmValue(a.remix_guide.bpm)
   }, [])
-
-  const autoBpm = analysis?.remix_guide?.bpm ?? GENRES[genreName]?.bpm ?? 120
 
   const handleGenerate = () => {
     if (!analysis || !song) return
-    const genre = GENRES[genreName]!
-    const bpm = bpmOpt === 'Auto' ? (analysis.remix_guide?.bpm ?? genre.bpm) : parseInt(bpmOpt, 10)
-    setResult({ analysis, song, genreName, bpm })
+    setResult({ analysis, song, genreName, bpm: bpmValue })
     setActiveExt(null)
     setActiveProgress(0)
     setShowTimeline(false)
@@ -83,9 +79,7 @@ export function SidebarPage({ onAdvanced }: Props) {
     if (result) {
       onAdvanced(result)
     } else if (analysis && song) {
-      const genre = GENRES[genreName]!
-      const bpm = bpmOpt === 'Auto' ? (analysis.remix_guide?.bpm ?? genre.bpm) : parseInt(bpmOpt, 10)
-      onAdvanced({ analysis, song, genreName, bpm })
+      onAdvanced({ analysis, song, genreName, bpm: bpmValue })
     } else {
       onAdvanced()
     }
@@ -360,25 +354,59 @@ export function SidebarPage({ onAdvanced }: Props) {
 
             {/* BPM */}
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-widest mb-1.5" style={{ color: 'var(--color-muted)' }}>
-                BPM
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {BPM_CHIPS.map(b => (
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-muted)' }}>
+                  BPM
+                </p>
+                {/* Input numérico */}
+                <div
+                  className="flex items-center rounded-xl overflow-hidden"
+                  style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                >
                   <button
-                    key={b}
-                    onClick={() => setBpmOpt(b)}
-                    className="px-3 py-1.5 text-xs rounded-xl font-mono transition-all"
-                    style={{
-                      color: bpmOpt === b ? 'var(--color-bg)' : 'var(--color-ink)',
-                      background: bpmOpt === b ? 'var(--color-primary)' : 'var(--color-card-hi)',
-                      border: '1px solid',
-                      borderColor: bpmOpt === b ? 'var(--color-primary)' : 'var(--color-border)',
+                    onClick={() => setBpmValue(v => Math.max(50, v - 1))}
+                    onMouseDown={e => {
+                      const id = setInterval(() => setBpmValue(v => Math.max(50, v - 1)), 120)
+                      const stop = () => clearInterval(id)
+                      e.currentTarget.addEventListener('mouseup', stop, { once: true })
+                      window.addEventListener('mouseup', stop, { once: true })
                     }}
-                  >
-                    {b === 'Auto' ? `Auto (${autoBpm})` : b}
-                  </button>
-                ))}
+                    className="px-2.5 py-1.5 font-light select-none"
+                    style={{ color: 'var(--color-muted)' }}
+                  >−</button>
+                  <input
+                    type="number"
+                    value={bpmValue}
+                    min={50} max={220}
+                    onChange={e => setBpmValue(Math.max(50, Math.min(220, Number(e.target.value) || 120)))}
+                    className="w-11 py-1.5 font-mono text-xs text-center bg-transparent focus:outline-none"
+                    style={{ color: 'var(--color-ink)' }}
+                  />
+                  <button
+                    onClick={() => setBpmValue(v => Math.min(220, v + 1))}
+                    onMouseDown={e => {
+                      const id = setInterval(() => setBpmValue(v => Math.min(220, v + 1)), 120)
+                      const stop = () => clearInterval(id)
+                      e.currentTarget.addEventListener('mouseup', stop, { once: true })
+                      window.addEventListener('mouseup', stop, { once: true })
+                    }}
+                    className="px-2.5 py-1.5 font-light select-none"
+                    style={{ color: 'var(--color-muted)' }}
+                  >+</button>
+                </div>
+              </div>
+              {/* Slider */}
+              <input
+                type="range"
+                min={50} max={220} step={1}
+                value={bpmValue}
+                onChange={e => setBpmValue(Number(e.target.value))}
+                className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                style={{ accentColor: 'var(--color-primary)' }}
+              />
+              <div className="flex justify-between mt-1">
+                <span className="font-mono text-[9px]" style={{ color: 'var(--color-muted)' }}>50</span>
+                <span className="font-mono text-[9px]" style={{ color: 'var(--color-muted)' }}>220</span>
               </div>
             </div>
 
