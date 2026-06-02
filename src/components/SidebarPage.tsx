@@ -34,6 +34,11 @@ const SECTION_PALETTE = [
 
 const MAX_BARS = 96
 
+const SECTION_COLORS: Record<string, string> = {
+  'Intro': '#8ab4f0', 'Build Up': '#c084fc', 'Drop 1': '#7ad1a8',
+  'Drop 2': '#7ad1a8', 'Break': '#e8c87a', 'Outro': '#7e7c78',
+}
+
 export function SidebarPage({ onAdvanced }: Props) {
   // --- Sidebar state ---
   const [analysis, setAnalysis] = useState<SongAnalysis | null>(null)
@@ -404,7 +409,7 @@ export function SidebarPage({ onAdvanced }: Props) {
 
       {/* ── CONTEÚDO ── */}
       <main className="flex-1 overflow-y-auto px-8 py-8">
-        {!result ? (
+        {!result && !analysis ? (
           /* Zero state */
           <div className="flex flex-col items-center justify-center text-center" style={{ minHeight: '80vh' }}>
             <p className="font-sans text-2xl font-bold mb-3" style={{ color: 'var(--color-ink)' }}>
@@ -416,7 +421,111 @@ export function SidebarPage({ onAdvanced }: Props) {
               para ver 4 variações harmônicas da sua música — do voicing mais limpo ao mais completo.
             </p>
           </div>
-        ) : (
+        ) : !result && analysis ? (
+          /* Guia da análise */
+          <div className="max-w-xl space-y-4" style={{ animation: 'fadeInUp 0.35s ease' }}>
+            {/* Cabeçalho da música */}
+            <div className="flex items-center gap-4 mb-2">
+              {song?.cover && (
+                <img src={song.cover} alt="" className="w-14 h-14 rounded-2xl object-cover shrink-0" />
+              )}
+              <div>
+                <h2 className="font-sans text-xl font-bold" style={{ color: 'var(--color-ink)' }}>
+                  {song?.title} — {song?.artist}
+                </h2>
+                <p className="text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>{analysis.character}</p>
+              </div>
+            </div>
+
+            {/* Análise harmônica */}
+            <div className="card p-5">
+              <div className="flex gap-2 flex-wrap mb-4">
+                <span className="chip font-mono text-xs px-3 py-1.5" style={{ color: 'var(--color-primary)' }}>
+                  {analysis.key} {analysis.mode}
+                </span>
+                <span className="chip font-mono text-xs px-3 py-1.5" style={{ color: 'var(--color-muted)' }}>
+                  {analysis.bpm_original} BPM orig.
+                </span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--color-muted)' }}>
+                    Progressão principal
+                  </p>
+                  <p className="font-sans font-semibold text-base" style={{ color: 'var(--color-ink)' }}>
+                    {analysis.progression}
+                  </p>
+                  <p className="font-mono text-xs mt-0.5" style={{ color: 'var(--color-primary)' }}>
+                    {analysis.progression_degrees}
+                  </p>
+                </div>
+                {analysis.borrowed_chords?.length > 0 && (
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--color-muted)' }}>
+                      Acordes disponíveis para remix
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {analysis.borrowed_chords.map((c, i) => (
+                        <span key={i} className="chip font-mono text-xs px-2.5 py-1" style={{ color: '#8ab4f0' }}>
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Guia do remix */}
+            <div className="card p-5">
+              <p className="font-mono text-[10px] uppercase tracking-widest mb-4" style={{ color: 'var(--color-muted)' }}>
+                Guia do remix — {analysis.remix_guide.style} · {analysis.remix_guide.bpm} BPM
+              </p>
+              <div className="space-y-0 mb-5">
+                {analysis.remix_guide.structure.map((s, i) => (
+                  <div key={i} className="flex items-start gap-3 py-2.5 border-b last:border-0"
+                    style={{ borderColor: 'var(--color-border)' }}>
+                    <span className="font-mono text-xs w-10 shrink-0 pt-0.5" style={{ color: 'var(--color-muted)' }}>
+                      {s.time}
+                    </span>
+                    <span className="font-mono text-xs font-semibold w-20 shrink-0 pt-0.5"
+                      style={{ color: SECTION_COLORS[s.section] ?? 'var(--color-primary)' }}>
+                      {s.section}
+                    </span>
+                    <span className="text-sm" style={{ color: 'var(--color-ink)' }}>{s.description}</span>
+                  </div>
+                ))}
+              </div>
+              {analysis.remix_guide.instruments?.length > 0 && (
+                <div className="mb-4">
+                  <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--color-muted)' }}>
+                    Instrumentos
+                  </p>
+                  {analysis.remix_guide.instruments.map((inst, i) => (
+                    <div key={i} className="flex gap-3 py-1.5">
+                      <span className="font-mono text-xs font-semibold w-16 shrink-0" style={{ color: 'var(--color-primary)' }}>
+                        {inst.role}
+                      </span>
+                      <span className="text-sm" style={{ color: 'var(--color-muted)' }}>{inst.suggestion}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {analysis.remix_guide.tips?.length > 0 && (
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--color-muted)' }}>
+                    Dicas
+                  </p>
+                  {analysis.remix_guide.tips.map((tip, i) => (
+                    <p key={i} className="text-sm flex gap-2 mb-1.5" style={{ color: 'var(--color-muted)' }}>
+                      <span style={{ color: 'var(--color-primary)' }}>→</span> {tip}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : result ? (
           <div
             style={{ animation: 'fadeInUp 0.4s ease' }}
           >
@@ -563,7 +672,7 @@ export function SidebarPage({ onAdvanced }: Props) {
               ↓ Baixar os 4 MIDIs — 5 trilhas cada (.zip)
             </button>
           </div>
-        )}
+        ) : null}
       </main>
     </div>
   )

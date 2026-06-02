@@ -264,8 +264,8 @@ export function SongSearch({ onAnalysis, onSelect, targetStyle, targetBpm, hideH
         )}
       </div>
 
-      {/* Resultado */}
-      {result && (
+      {/* Resultado — ocultado no modo sidebar (o pai renderiza no painel direito) */}
+      {result && !stackLayout && (
         <div className="space-y-3">
           {/* Análise harmônica */}
           <div className="card p-5">
