@@ -2,6 +2,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/((?!api/|@|node_modules/).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|@|node_modules/)[^.]*)", "destination": "/index.html" }
   ]
 }

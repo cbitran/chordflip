@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { genEvents, TPQ } from '../core/groove'
 import { genArpeggioEvents, genPadEvents, genLeadEvents } from '../core/arranger'
+import { genKickEvents } from '../core/kick-pattern'
+import { buildTrackActiveRanges, filterBySection } from '../core/density'
+import type { TrackName } from '../core/density'
 import { trackBytes, midiFile, downloadMidi } from '../core/midi-writer'
-import { playEvents, stopAll } from '../audio/player'
+import { playMiniArrangement, stopMiniArrangement } from '../audio/player'
 import { reVoice } from '../core/reharmonizer'
 import { NOTE_NAMES } from '../core/parser'
-import type { ParsedChord, Extension, GenreDefinition } from '../types'
+import type { ParsedChord, Extension, GenreDefinition, MidiEvent } from '../types'
 import type { SectionMarker } from './ResultsPage'
 
 interface Props {
@@ -17,6 +20,7 @@ interface Props {
   tagline: string
   color: string
   genre: GenreDefinition
+  genreName: string
   bpm: number
   isActive: boolean
   onPlay: () => void
@@ -26,7 +30,7 @@ interface Props {
 }
 
 export function MiniPlayer({
-  chords, markers, scale, ext, label, tagline, color, genre, bpm,
+  chords, markers, scale, ext, label, tagline, color, genre, genreName, bpm,
   isActive, onPlay, onStop, onProgress, songSlug,
 }: Props) {
   const [progress, setProgress] = useState(0)
@@ -44,6 +48,25 @@ export function MiniPlayer({
     [chords, ext, genre],
   )
 
+  const ke  = useMemo(() => genKickEvents(genreName, chords.length), [genreName, chords.length])
+  const ae  = useMemo(() => genArpeggioEvents(chords, ext, scale), [chords, ext, scale])
+  const pde = useMemo(() => genPadEvents(chords, ext, scale), [chords, ext, scale])
+  const le  = useMemo(() => genLeadEvents(chords, ext, scale), [chords, ext, scale])
+
+  const totalTicks = chords.length * 4 * TPQ
+
+  const mkFiltered = (events: MidiEvent[], track: TrackName) =>
+    markers?.length
+      ? filterBySection(events, buildTrackActiveRanges(markers, totalTicks, genreName, track))
+      : events
+
+  const filteredKe  = useMemo(() => mkFiltered(ke,  'kick'),     [ke,  markers, totalTicks, genreName])   // eslint-disable-line react-hooks/exhaustive-deps
+  const filteredPe  = useMemo(() => mkFiltered(pe,  'piano'),    [pe,  markers, totalTicks, genreName])   // eslint-disable-line react-hooks/exhaustive-deps
+  const filteredBe  = useMemo(() => mkFiltered(be,  'bass'),     [be,  markers, totalTicks, genreName])   // eslint-disable-line react-hooks/exhaustive-deps
+  const filteredAe  = useMemo(() => mkFiltered(ae,  'arpeggio'), [ae,  markers, totalTicks, genreName])   // eslint-disable-line react-hooks/exhaustive-deps
+  const filteredPde = useMemo(() => mkFiltered(pde, 'pad'),      [pde, markers, totalTicks, genreName])   // eslint-disable-line react-hooks/exhaustive-deps
+  const filteredLe  = useMemo(() => mkFiltered(le,  'lead'),     [le,  markers, totalTicks, genreName])   // eslint-disable-line react-hooks/exhaustive-deps
+
   // Notas do primeiro acorde
   const noteChips = useMemo(() => {
     if (!chords.length) return []
@@ -55,10 +78,10 @@ export function MiniPlayer({
 
   const totalMs = useMemo(() => {
     const secsPerTick = 60 / bpm / TPQ
-    const all = [...pe, ...be]
+    const all = [...filteredPe, ...filteredBe, ...filteredKe, ...filteredAe, ...filteredPde, ...filteredLe]
     const lastTick = all.reduce((max, e) => Math.max(max, e.tick + e.duration), 0)
     return lastTick * secsPerTick * 1000 + 300
-  }, [pe, be, bpm])
+  }, [filteredPe, filteredBe, filteredKe, filteredAe, filteredPde, filteredLe, bpm])
 
   // Seção atual com base no progresso
   const currentSection = useMemo(() => {
@@ -77,15 +100,25 @@ export function MiniPlayer({
       return
     }
 
-    stopAll()
+    stopMiniArrangement()
     setProgress(0)
     startRef.current = Date.now()
 
-    playEvents(pe, be, bpm, TPQ, () => {
-      if (!mountedRef.current) return
-      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
-      setProgress(0)
-      onStop()
+    playMiniArrangement({
+      kickEvents: filteredKe,
+      pianoEvents: filteredPe,
+      bassEvents: filteredBe,
+      arpeggioEvents: filteredAe,
+      padEvents: filteredPde,
+      leadEvents: filteredLe,
+      bpm,
+      tpq: TPQ,
+      onEnd: () => {
+        if (!mountedRef.current) return
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+        setProgress(0)
+        onStop()
+      },
     })
 
     timerRef.current = setInterval(() => {
@@ -98,7 +131,7 @@ export function MiniPlayer({
 
     return () => {
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
-      stopAll()
+      stopMiniArrangement()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive])

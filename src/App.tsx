@@ -130,9 +130,10 @@ export default function App() {
       if (tonicNum !== undefined) setAutoTonic(tonicNum)
       const moods = STYLE_MOOD[result.genreName] ?? []
       setAutoMoods(moods)
+      updateSession({ song: { artist: result.song.artist, title: result.song.title } })
     }
     setAppMode('advanced')
-  }, [])
+  }, [updateSession])
 
   // --- Roteamento ---
 

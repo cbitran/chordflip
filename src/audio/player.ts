@@ -7,6 +7,17 @@ let bass: Tone.MonoSynth | null = null
 let reverbNode: Tone.Reverb | null = null
 let onEndTimeoutId: ReturnType<typeof setTimeout> | null = null
 
+// Mini arrangement synths (isolated from playEvents and playUnified)
+let miniKick: Tone.MembraneSynth | null = null
+let miniBass2: Tone.MonoSynth | null = null
+let miniPiano: Tone.PolySynth | null = null
+let miniArpeggio: Tone.Synth | null = null
+let miniPad: Tone.PolySynth | null = null
+let miniLead: Tone.MonoSynth | null = null
+let miniPianoReverb: Tone.Reverb | null = null
+let miniPadReverb: Tone.Reverb | null = null
+let miniEndTimeout: ReturnType<typeof setTimeout> | null = null
+
 const SYNTH_DB = -13
 const BASS_DB = -10
 
@@ -98,6 +109,109 @@ export function stopAll(): void {
   if (bass) { bass.dispose(); bass = null }
   if (reverbNode) { reverbNode.dispose(); reverbNode = null }
   Tone.Transport.cancel()
+}
+
+export interface MiniArrangementOptions {
+  kickEvents: MidiEvent[]
+  pianoEvents: MidiEvent[]
+  bassEvents: MidiEvent[]
+  arpeggioEvents: MidiEvent[]
+  padEvents: MidiEvent[]
+  leadEvents: MidiEvent[]
+  bpm: number
+  tpq: number
+  onEnd: () => void
+}
+
+export function stopMiniArrangement(): void {
+  if (miniEndTimeout) { clearTimeout(miniEndTimeout); miniEndTimeout = null }
+  if (miniKick) { miniKick.dispose(); miniKick = null }
+  if (miniBass2) { miniBass2.dispose(); miniBass2 = null }
+  if (miniPiano) { miniPiano.dispose(); miniPiano = null }
+  if (miniArpeggio) { miniArpeggio.dispose(); miniArpeggio = null }
+  if (miniPad) { miniPad.dispose(); miniPad = null }
+  if (miniLead) { miniLead.dispose(); miniLead = null }
+  if (miniPianoReverb) { miniPianoReverb.dispose(); miniPianoReverb = null }
+  if (miniPadReverb) { miniPadReverb.dispose(); miniPadReverb = null }
+}
+
+export async function playMiniArrangement({
+  kickEvents, pianoEvents, bassEvents, arpeggioEvents, padEvents, leadEvents,
+  bpm, tpq, onEnd,
+}: MiniArrangementOptions): Promise<void> {
+  stopMiniArrangement()
+  await Tone.start()
+
+  const secsPerTick = 60 / bpm / tpq
+  const now = Tone.now() + 0.05
+
+  miniKick = new Tone.MembraneSynth({
+    pitchDecay: 0.05, octaves: 8,
+    envelope: { attack: 0.001, decay: 0.3, sustain: 0.01, release: 0.1 },
+  }).toDestination()
+  miniKick.volume.value = -4
+
+  miniPianoReverb = new Tone.Reverb({ decay: 1.5, wet: 0.12 }).toDestination()
+  miniPiano = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'triangle' } as Tone.OmniOscillatorOptions,
+    envelope: { attack: 0.01, decay: 0.18, sustain: 0.25, release: 0.5 },
+  }).connect(miniPianoReverb)
+  miniPiano.volume.value = -13
+
+  miniBass2 = new Tone.MonoSynth({
+    oscillator: { type: 'sawtooth' },
+    filterEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.3, baseFrequency: 120, octaves: 2.5 },
+    envelope: { attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.4 },
+  }).toDestination()
+  miniBass2.volume.value = -10
+
+  miniArpeggio = new Tone.Synth({
+    oscillator: { type: 'triangle' } as Tone.OmniOscillatorOptions,
+    envelope: { attack: 0.005, decay: 0.15, sustain: 0.1, release: 0.3 },
+  }).toDestination()
+  miniArpeggio.volume.value = -16
+
+  miniPadReverb = new Tone.Reverb({ decay: 2.0, wet: 0.3 }).toDestination()
+  miniPad = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: 'sine' } as Tone.OmniOscillatorOptions,
+    envelope: { attack: 0.3, decay: 0.2, sustain: 0.6, release: 1.0 },
+  }).connect(miniPadReverb)
+  miniPad.volume.value = -18
+
+  miniLead = new Tone.MonoSynth({
+    oscillator: { type: 'sawtooth' },
+    filter: { frequency: 1200, Q: 4 },
+    envelope: { attack: 0.01, decay: 0.2, sustain: 0.5, release: 0.4 },
+  }).toDestination()
+  miniLead.volume.value = -14
+
+  kickEvents.forEach(({ tick, duration }) => {
+    miniKick!.triggerAttackRelease('C1', Math.max(duration * secsPerTick, 0.05), now + tick * secsPerTick, 0.9)
+  })
+  pianoEvents.forEach(({ tick, duration, note, velocity }) => {
+    miniPiano!.triggerAttackRelease(midiToNote(note), Math.max(duration * secsPerTick, 0.05), now + tick * secsPerTick, velocity / 127)
+  })
+  bassEvents.forEach(({ tick, duration, note, velocity }) => {
+    miniBass2!.triggerAttackRelease(midiToNote(note), Math.max(duration * secsPerTick, 0.05), now + tick * secsPerTick, velocity / 127)
+  })
+  arpeggioEvents.forEach(({ tick, duration, note, velocity }) => {
+    miniArpeggio!.triggerAttackRelease(midiToNote(note), Math.max(duration * secsPerTick, 0.05), now + tick * secsPerTick, velocity / 127)
+  })
+  padEvents.forEach(({ tick, duration, note, velocity }) => {
+    miniPad!.triggerAttackRelease(midiToNote(note), Math.max(duration * secsPerTick, 0.05), now + tick * secsPerTick, velocity / 127)
+  })
+  leadEvents.forEach(({ tick, duration, note, velocity }) => {
+    miniLead!.triggerAttackRelease(midiToNote(note), Math.max(duration * secsPerTick, 0.05), now + tick * secsPerTick, velocity / 127)
+  })
+
+  const allEvents = [...kickEvents, ...pianoEvents, ...bassEvents, ...arpeggioEvents, ...padEvents, ...leadEvents]
+  const lastTick = allEvents.reduce((max, e) => Math.max(max, e.tick + e.duration), 0)
+  const totalMs = lastTick * secsPerTick * 1000
+
+  miniEndTimeout = setTimeout(() => {
+    miniEndTimeout = null
+    onEnd()
+  }, totalMs + 300)
 }
 
 export interface UnifiedPlayOptions {

@@ -578,6 +578,7 @@ export function SidebarPage({ onAdvanced }: Props) {
               {EXT_CONFIGS.map(({ ext, label, tagline, color }) => (
                 <MiniPlayer key={ext} chords={fullSong.chords} markers={fullSong.markers} scale={scale}
                   ext={ext} label={label} tagline={tagline} color={color} genre={genre!} bpm={result.bpm}
+                  genreName={result.genreName}
                   isActive={activeExt === ext} onPlay={() => handlePlay(ext)} onStop={handleStop}
                   onProgress={p => setActiveProgress(p)} songSlug={songSlug} />
               ))}
