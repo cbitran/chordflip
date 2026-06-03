@@ -26,6 +26,7 @@ export interface SongAnalysis {
   character: string
   borrowed_chords: string[]
   sections?: SongSection[]
+  explanation?: string
   spotify?: { energy: number; danceability: number } | null
   remix_guide: {
     style: string

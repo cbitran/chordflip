@@ -66,7 +66,8 @@ Respond ONLY with valid JSON, no markdown, no extra text:
       "Specific tip for this remix",
       "Second production tip"
     ]
-  }
+  },
+  "explanation": "Duas ou três frases em português do Brasil descrevendo como esta música soa emocionalmente e por que funciona no estilo ${targetStyle}. REGRAS ABSOLUTAS: zero termos de teoria musical (proibido: acorde, progressão, tônica, dominante, grau, modo, escala, Fmaj7, ii-V-I, emprestado, extensão). Use APENAS metáforas sensoriais: pesado, flutuante, urgente, quente, cheio, melancólico, tenso, leve, denso, solto. Máximo 3 frases."
 }`
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
