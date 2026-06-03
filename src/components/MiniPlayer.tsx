@@ -5,7 +5,8 @@ import { genArpeggioEvents, genPadEvents, genLeadEvents } from '../core/arranger
 import { genKickEvents, genClapEvents, genHihatEvents } from '../core/kick-pattern'
 import { buildTrackActiveRanges, filterBySection } from '../core/density'
 import type { TrackName } from '../core/density'
-import { trackBytes, midiFile, downloadMidi } from '../core/midi-writer'
+import { trackBytes, midiFile } from '../core/midi-writer'
+import { zipSync } from 'fflate'
 import { playMiniArrangement, stopMiniArrangement } from '../audio/player'
 import { reVoice } from '../core/reharmonizer'
 import { NOTE_NAMES } from '../core/parser'
@@ -148,18 +149,27 @@ export function MiniPlayer({
   }, [isActive])
 
   const handleExport = () => {
-    const ae = genArpeggioEvents(chords, ext, scale)
+    const ae  = genArpeggioEvents(chords, ext, scale)
     const pde = genPadEvents(chords, ext, scale)
-    const le = genLeadEvents(chords, ext, scale)
-    const midi = midiFile([
-      trackBytes([], bpm, 'Tempo'),
-      trackBytes(pe, null, 'Piano'),
-      trackBytes(be, null, 'Bass'),
-      trackBytes(ae, null, 'Arpejo'),
-      trackBytes(pde, null, 'Pad'),
-      trackBytes(le, null, 'Lead'),
-    ])
-    downloadMidi(midi, `${songSlug}-${label.replace(/ /g, '')}.mid`)
+    const le  = genLeadEvents(chords, ext, scale)
+    const tempo = trackBytes([], bpm, 'Tempo')
+    const folder = `${songSlug}-${label.replace(/ /g, '')}`
+
+    const files: Record<string, Uint8Array> = {
+      [`${folder}/piano.mid`]:  new Uint8Array(midiFile([tempo, trackBytes(pe,  null, 'Piano')])),
+      [`${folder}/bass.mid`]:   new Uint8Array(midiFile([tempo, trackBytes(be,  null, 'Bass')])),
+      [`${folder}/arpejo.mid`]: new Uint8Array(midiFile([tempo, trackBytes(ae,  null, 'Arpejo')])),
+      [`${folder}/pad.mid`]:    new Uint8Array(midiFile([tempo, trackBytes(pde, null, 'Pad')])),
+      [`${folder}/lead.mid`]:   new Uint8Array(midiFile([tempo, trackBytes(le,  null, 'Lead')])),
+    }
+
+    const zipped = zipSync(files)
+    const url = URL.createObjectURL(new Blob([zipped], { type: 'application/zip' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${folder}.zip`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
