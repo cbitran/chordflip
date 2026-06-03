@@ -18,6 +18,8 @@ import { SongSearch, type SongAnalysis } from './components/SongSearch'
 import { TabPlayer, type TabPlayerHandle } from './components/TabPlayer'
 import { ProgressionBrowser } from './components/ProgressionBrowser'
 import { SidebarPage } from './components/SidebarPage'
+import { HomeWizard, type WizardResult } from './components/HomeWizard'
+import { ResultsPage } from './components/ResultsPage'
 import type { SimpleWizardResult } from './components/SimpleWizard'
 import type { Extension, ViradasMode, ReharmChord } from './types'
 import type { SavedProject } from './lib/projects'
@@ -45,6 +47,7 @@ export default function App() {
 
   // --- Roteamento principal ---
   const [appMode, setAppMode] = useState<'home' | 'results' | 'advanced'>('home')
+  const [wizardResult, setWizardResult] = useState<WizardResult | null>(null)
 
   // --- Estado do studio avançado ---
   const [text, setText] = useState('F Am Bb C')
@@ -137,10 +140,33 @@ export default function App() {
 
   // --- Roteamento ---
 
-  if (appMode === 'home' || appMode === 'results') {
+  if (appMode === 'home') {
     return (
-      <SidebarPage
-        onAdvanced={(result) => enterAdvanced(result)}
+      <HomeWizard
+        onComplete={(result) => {
+          setWizardResult(result)
+          setAppMode('results')
+        }}
+      />
+    )
+  }
+
+  if (appMode === 'results' && wizardResult) {
+    return (
+      <ResultsPage
+        analysis={wizardResult.analysis}
+        song={{ title: wizardResult.song.title, artist: wizardResult.song.artist, cover: wizardResult.song.cover }}
+        genreName={wizardResult.style}
+        bpm={wizardResult.bpm}
+        onAdvanced={() =>
+          enterAdvanced({
+            analysis: wizardResult.analysis,
+            song: { title: wizardResult.song.title, artist: wizardResult.song.artist, cover: wizardResult.song.cover },
+            genreName: wizardResult.style,
+            bpm: wizardResult.bpm,
+          })
+        }
+        onBack={() => setAppMode('home')}
       />
     )
   }
